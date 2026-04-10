@@ -2,6 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Spinner } from '../spinner/Spinner';
 
+interface WalletStatusResponse {
+  connected: boolean;
+  publicKey: string | null;
+  ready?: boolean;
+  success?: boolean;
+  error?: string;
+  signature?: string;
+}
+
+declare const chrome: {
+  runtime: {
+    sendMessage(
+      message: { type: string; payload?: unknown },
+      callback: (response: WalletStatusResponse) => void
+    ): void;
+  };
+};
+
 interface BadgeProps {
   creatorWallet: string;
   creatorName: string;
@@ -35,7 +53,7 @@ export const Badge: React.FC<BadgeProps> = ({ creatorWallet, creatorName, platfo
     setError(null);
     try {
       // Get current wallet public key from background
-      chrome.runtime.sendMessage({ type: 'GET_WALLET_STATUS' }, async (status) => {
+      chrome.runtime.sendMessage({ type: 'GET_WALLET_STATUS' }, async (status: WalletStatusResponse) => {
         if (!status.connected || !status.publicKey) {
           setError('Connect wallet to view your streams');
           setLoading(false);
@@ -64,7 +82,7 @@ export const Badge: React.FC<BadgeProps> = ({ creatorWallet, creatorName, platfo
     try {
       chrome.runtime.sendMessage(
         { type: 'CANCEL_STREAM', payload: { streamId } },
-        (response) => {
+        (response: WalletStatusResponse) => {
           if (response.success) {
             setUserStreams(userStreams.filter(s => s.id !== streamId));
           } else {
