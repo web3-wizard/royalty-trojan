@@ -1,7 +1,4 @@
-import { createRoot, type Root } from 'react-dom/client';
-import { Modal } from '../ui/modal/Modal';
 import { resolveCreatorWallet } from '../core/identity-client.js';
-import { injectBadge } from '../ui/badge/Badge.js';
 import { showToast } from './notifications';
 import { YouTubeAdapter } from './youtube';
 import { XAdapter } from './x';
@@ -17,9 +14,39 @@ const adapters: PlatformAdapter[] = [
 let currentAdapter: PlatformAdapter | null = null;
 let currentCreator: CreatorIdentity | null = null;
 let modalRoot: HTMLDivElement | null = null;
-let reactRoot: Root | null = null;
+let reactRoot: { render(node: unknown): void; unmount(): void } | null = null;
+let createRootFn: ((container: HTMLElement) => { render(node: unknown): void; unmount(): void }) | null = null;
+let ModalComponent: ((props: {
+  creatorName: string;
+  recipientWallet: string;
+  onClose: () => void;
+  onSuccess: (signature: string, tier: unknown) => void;
+}) => JSX.Element) | null = null;
+let injectBadgeFn: ((
+  container: HTMLElement,
+  props: { creatorWallet: string; creatorName: string; platform: string }
+) => void) | null = null;
 
 type CreatorWithWallet = CreatorIdentity & { wallet?: string };
+
+async function ensureModalRuntime() {
+  if (createRootFn && ModalComponent) return;
+
+  const [{ createRoot }, modalModule] = await Promise.all([
+    import('react-dom/client'),
+    import('../ui/modal/Modal'),
+  ]);
+
+  createRootFn = createRoot as typeof createRootFn;
+  ModalComponent = modalModule.Modal as typeof ModalComponent;
+}
+
+async function ensureBadgeRuntime() {
+  if (injectBadgeFn) return;
+
+  const badgeModule = await import('../ui/badge/Badge.js');
+  injectBadgeFn = badgeModule.injectBadge;
+}
 
 async function extractDomainFromCreator(): Promise<string | null> {
   if (currentAdapter?.extractDomain) {
@@ -28,21 +55,27 @@ async function extractDomainFromCreator(): Promise<string | null> {
   return null;
 }
 
-function injectCreatorBadge(creator: CreatorIdentity, wallet: string) {
+async function injectCreatorBadge(creator: CreatorIdentity, wallet: string) {
   if (!creator.badgeTarget) {
     console.warn('No badge target found for', creator.platform);
     showToast('Could not place creator badge on this page.', 'info');
     return;
   }
 
-  injectBadge(creator.badgeTarget, {
+  await ensureBadgeRuntime();
+  if (!injectBadgeFn) return;
+
+  injectBadgeFn(creator.badgeTarget, {
     creatorWallet: wallet,
     creatorName: creator.displayName || creator.identifier,
     platform: creator.platform,
   });
 }
 
-function showModal(creatorName: string, recipientWallet: string) {
+async function showModal(creatorName: string, recipientWallet: string) {
+  await ensureModalRuntime();
+  if (!createRootFn || !ModalComponent) return;
+
   if (modalRoot) {
     reactRoot?.unmount();
     modalRoot.remove();
@@ -54,7 +87,9 @@ function showModal(creatorName: string, recipientWallet: string) {
   modalRoot.id = 'royalty-trojan-modal';
   document.body.appendChild(modalRoot);
 
-  reactRoot = createRoot(modalRoot);
+  reactRoot = createRootFn(modalRoot);
+
+  const Modal = ModalComponent;
 
   const closeModal = () => {
     if (!modalRoot) return;
@@ -97,13 +132,7 @@ async function detectPlatform() {
         const handle = currentCreator.identifier;
         const wallet = await resolveCreatorWallet(domain || undefined, handle);
         if (wallet) {
-          if (currentCreator.badgeTarget) {
-            injectBadge(currentCreator.badgeTarget, {
-              creatorWallet: wallet,
-              creatorName: currentCreator.displayName || currentCreator.identifier,
-              platform: currentCreator.platform,
-            });
-          }
+          await injectCreatorBadge(currentCreator, wallet);
           (currentCreator as CreatorWithWallet).wallet = wallet;
         } else {
           console.log('No Bags wallet found for creator');
@@ -155,7 +184,7 @@ function attachInterceptor(button: HTMLElement) {
           wallet = await resolveCreatorWallet(domain || undefined, creator.identifier);
           if (wallet) {
             creatorWithWallet.wallet = wallet;
-            injectCreatorBadge(creator, wallet);
+            await injectCreatorBadge(creator, wallet);
           }
         }
       } catch (error) {
@@ -169,7 +198,7 @@ function attachInterceptor(button: HTMLElement) {
         return;
       }
 
-      showModal(creator.displayName || creator.identifier, wallet);
+      await showModal(creator.displayName || creator.identifier, wallet);
     },
     true
   );
