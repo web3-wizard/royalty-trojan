@@ -1,7 +1,29 @@
-import { FastifyPluginAsync } from 'fastify';
 import { resolveWallet } from '../services/resolver.js';
 
-const resolveRoute: FastifyPluginAsync = async (fastify) => {
+type ResolveQuery = { domain: string; handle?: string };
+type ResolveSuccess = { wallet: string };
+type ResolveError = { error: string };
+
+interface ReplyLike {
+  status(code: number): ReplyLike;
+  send(payload: ResolveError): ResolveError;
+}
+
+interface RequestLike {
+  query: ResolveQuery;
+}
+
+interface FastifyLike {
+  get(
+    path: string,
+    options: unknown,
+    handler: (request: RequestLike, reply: ReplyLike) => Promise<ResolveSuccess | ResolveError>
+  ): void;
+}
+
+type FastifyPluginAsyncLike = (fastify: FastifyLike) => Promise<void>;
+
+const resolveRoute: FastifyPluginAsyncLike = async (fastify: FastifyLike) => {
   fastify.get('/', {
     schema: {
       querystring: {
@@ -27,8 +49,8 @@ const resolveRoute: FastifyPluginAsync = async (fastify) => {
         },
       },
     },
-  }, async (request, reply) => {
-    const { domain, handle } = request.query as { domain: string; handle?: string };
+  }, async (request: RequestLike, reply: ReplyLike) => {
+    const { domain, handle } = request.query;
 
     const wallet = await resolveWallet(domain, handle);
     if (!wallet) {
