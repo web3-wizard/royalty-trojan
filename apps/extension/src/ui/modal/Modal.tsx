@@ -51,6 +51,8 @@ export const Modal: React.FC<ModalProps> = ({ creatorName, recipientWallet, onCl
   const [error, setError] = useState<string | null>(null);
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
   const [success, setSuccess] = useState<{ signature: string; tier: Tier } | null>(null);
+  const hasPhantom = typeof window !== 'undefined'
+    && Boolean((window as Window & { solana?: { isPhantom?: boolean } }).solana?.isPhantom);
 
   useEffect(() => {
     // Check current wallet status from background
@@ -129,10 +131,21 @@ export const Modal: React.FC<ModalProps> = ({ creatorName, recipientWallet, onCl
 
         {!walletConnected ? (
           <div>
-            <p>Connect your wallet to continue</p>
-            <button onClick={handleConnectWallet} disabled={loading}>
-              {loading ? <><Spinner /> Connecting...</> : 'Connect Phantom'}
-            </button>
+            {!hasPhantom ? (
+              <>
+                <p>Phantom wallet is required.</p>
+                <a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer">
+                  Install Phantom
+                </a>
+              </>
+            ) : (
+              <>
+                <p>Connect your wallet to continue</p>
+                <button onClick={handleConnectWallet} disabled={loading}>
+                  {loading ? <><Spinner /> Connecting...</> : 'Connect Phantom'}
+                </button>
+              </>
+            )}
             {error && <p style={{ color: 'red' }}>{error}</p>}
           </div>
         ) : (
