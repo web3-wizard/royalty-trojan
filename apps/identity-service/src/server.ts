@@ -6,16 +6,20 @@ import { initRedis } from './services/cache.js';
 
 dotenv.config();
 
-const fastify = Fastify({ logger: true });
-await fastify.register(cors, { origin: true });
+async function main() {
+	const fastify = Fastify({ logger: true });
+	await fastify.register(cors, { origin: true });
 
-// Initialize Redis
-await initRedis();
+	// Initialize Redis
+	await initRedis();
 
-// Routes
-fastify.get('/health', async () => ({ status: 'ok' }));
-fastify.register(resolveRoute, { prefix: '/resolve' });
+	// Routes
+	fastify.get('/health', async () => ({ status: 'ok' }));
+	fastify.register(resolveRoute, { prefix: '/resolve' });
 
-const PORT = Number(process.env.PORT) || 3001;
-await fastify.listen({ port: PORT, host: '0.0.0.0' });
-console.log(`Identity service running on port ${PORT}`);
+	const PORT = Number(process.env.PORT) || 3001;
+	await fastify.listen({ port: PORT, host: '0.0.0.0' });
+	console.log(`Identity service running on port ${PORT}`);
+}
+
+void main();

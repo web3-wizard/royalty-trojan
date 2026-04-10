@@ -2,9 +2,15 @@
   "name": "royalty-trojan-identity-service",
   "private": true,
   "version": "0.0.0",
+  "type": "module",
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "dotenv": "^17.4.1",
+    "fastify": "^5.8.4"
   }
 }
