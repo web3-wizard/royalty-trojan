@@ -1,9 +1,30 @@
 import { PublicKey, clusterApiUrl } from '@solana/web3.js';
 import type { WalletAdapter } from './wallet-adapter/index.js';
 
+type WalletTx = Parameters<WalletAdapter['signAndSendTransaction']>[0];
+
+type BagsLikeClient = {
+  cancelStream(
+    streamId: string,
+    options: {
+      signTransaction: (tx: WalletTx) => Promise<string>;
+    }
+  ): Promise<string>;
+};
+
 export class BagsClient {
+  private readonly bags: BagsLikeClient;
+
   constructor(rpcUrl: string = clusterApiUrl('mainnet-beta')) {
     void rpcUrl;
+
+    // TODO: Replace with real Bags SDK client wiring.
+    this.bags = {
+      async cancelStream(streamId: string): Promise<string> {
+        void streamId;
+        return 'mock_cancel_signature_' + Date.now();
+      },
+    };
   }
 
   async createStream(
@@ -39,11 +60,12 @@ export class BagsClient {
   async cancelStream(wallet: WalletAdapter, streamId: string): Promise<string> {
     if (!wallet.connected) await wallet.connect();
 
-    if (!wallet.publicKey) {
-      throw new Error('Wallet not connected');
-    }
+    const signature = await this.bags.cancelStream(streamId, {
+      signTransaction: async (tx) => {
+        return wallet.signAndSendTransaction(tx);
+      },
+    });
 
-    void streamId;
-    return 'mock_cancel_signature_' + Date.now();
+    return signature;
   }
 }
