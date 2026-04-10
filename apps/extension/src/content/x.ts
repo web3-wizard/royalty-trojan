@@ -9,12 +9,40 @@ interface CreatorIdentity {
 interface PlatformAdapter {
   match(url: string): boolean;
   extractCreator(): CreatorIdentity | null;
+  extractDomain?(): Promise<string | null>;
   findSubscribeButtons(): HTMLElement[];
 }
 
 export class XAdapter implements PlatformAdapter {
   match(url: string): boolean {
     return url.includes('x.com') || url.includes('twitter.com');
+  }
+
+  async extractDomain(): Promise<string | null> {
+    // Look for the website link in profile bio/header.
+    const websiteLink = document.querySelector('a[data-testid="UserProfileHeader_website"]') as HTMLAnchorElement | null;
+    if (websiteLink?.href) {
+      try {
+        return new URL(websiteLink.href).hostname.replace(/^www\./, '');
+      } catch {
+        // Ignore malformed links and continue.
+      }
+    }
+
+    // Also check links inside the bio text.
+    const bioLinks = document.querySelectorAll('[data-testid="UserDescription"] a');
+    for (const link of bioLinks) {
+      const href = link.getAttribute('href');
+      if (href && href.startsWith('http')) {
+        try {
+          return new URL(href).hostname.replace(/^www\./, '');
+        } catch {
+          // Ignore malformed links and continue.
+        }
+      }
+    }
+
+    return null;
   }
 
   extractCreator(): CreatorIdentity | null {

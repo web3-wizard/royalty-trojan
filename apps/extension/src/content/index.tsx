@@ -19,7 +19,7 @@ let modalRoot: HTMLDivElement | null = null;
 let reactRoot: Root | null = null;
 
 async function extractDomainFromCreator(creator: CreatorIdentity): Promise<string> {
-  if (creator.platform === 'youtube' && currentAdapter?.extractDomain) {
+  if (currentAdapter?.extractDomain) {
     const domain = await currentAdapter.extractDomain();
     if (domain) return domain;
   }
