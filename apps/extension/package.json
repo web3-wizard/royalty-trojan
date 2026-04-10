@@ -5,5 +5,18 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3"
+  },
+  "dependencies": {
+    "@bags.foundation/sdk": "npm:@bagsfm/bags-sdk@^1.3.6",
+    "@solana/wallet-adapter-base": "^0.9.27",
+    "@solana/wallet-adapter-phantom": "^0.9.29",
+    "@solana/wallet-adapter-react": "^0.15.39",
+    "@solana/web3.js": "^1.98.4",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   }
 }
