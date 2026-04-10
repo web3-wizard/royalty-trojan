@@ -12,7 +12,7 @@ export default {
     outDir: 'dist',
     rollupOptions: {
       input: {
-        content: resolve(__dirname, 'src/content/index.ts'),
+        content: resolve(__dirname, 'src/content/index.tsx'),
         background: resolve(__dirname, 'src/background/service-worker.ts'),
       },
       output: {

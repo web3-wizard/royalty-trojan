@@ -10,7 +10,7 @@
     "https://*.twitch.tv/*"
   ],
   "background": {
-    "service_worker": "src/background/service-worker.ts",
+    "service_worker": "background.js",
     "type": "module"
   },
   "content_scripts": [
@@ -20,7 +20,7 @@
         "https://*.x.com/*",
         "https://*.twitch.tv/*"
       ],
-      "js": ["src/content/index.ts"],
+      "js": ["content.js"],
       "run_at": "document_idle"
     }
   ],

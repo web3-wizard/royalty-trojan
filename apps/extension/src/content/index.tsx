@@ -1,5 +1,4 @@
-import React from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, type Root } from 'react-dom/client';
 import { Modal } from '../ui/modal/Modal';
 import { YouTubeAdapter } from './youtube';
 import { XAdapter } from './x';
@@ -15,7 +14,7 @@ const adapters: PlatformAdapter[] = [
 let currentAdapter: PlatformAdapter | null = null;
 let currentCreator: CreatorIdentity | null = null;
 let modalRoot: HTMLDivElement | null = null;
-let reactRoot: ReturnType<typeof createRoot> | null = null;
+let reactRoot: Root | null = null;
 
 function showModal(creatorName: string, recipientWallet: string) {
   if (modalRoot) {
@@ -39,24 +38,24 @@ function showModal(creatorName: string, recipientWallet: string) {
     reactRoot = null;
   };
 
-  const handleSuccess = (signature: string, tier: any) => {
+  const handleSuccess = (signature: string, tier: unknown) => {
     console.log('Stream created!', signature, tier);
     setTimeout(closeModal, 3000);
   };
 
   reactRoot.render(
-    React.createElement(Modal, {
-      creatorName,
-      recipientWallet,
-      onClose: closeModal,
-      onSuccess: handleSuccess,
-    })
+    <Modal
+      creatorName={creatorName}
+      recipientWallet={recipientWallet}
+      onClose={closeModal}
+      onSuccess={handleSuccess}
+    />
   );
 }
 
 function detectPlatform() {
   const url = location.href;
-  const adapter = adapters.find(a => a.match(url));
+  const adapter = adapters.find((candidate) => candidate.match(url));
   if (adapter) {
     currentAdapter = adapter;
     currentCreator = adapter.extractCreator();
@@ -104,7 +103,6 @@ let observer: MutationObserver | null = null;
 function startObserving() {
   if (observer) observer.disconnect();
   observer = new MutationObserver(() => {
-    // Re-scan periodically; for performance we debounce
     requestAnimationFrame(() => {
       if (currentAdapter) {
         scanForButtons();
@@ -117,21 +115,17 @@ function startObserving() {
   });
 }
 
-// Initial detection
 detectPlatform();
 
-// Handle SPA navigation (YouTube, X)
 let lastUrl = location.href;
 new MutationObserver(() => {
   const url = location.href;
   if (url !== lastUrl) {
     lastUrl = url;
-    // Small delay for new content to load
     setTimeout(() => {
       detectPlatform();
     }, 1000);
   }
 }).observe(document, { subtree: true, childList: true });
 
-// Export for potential use by other modules
 export { currentCreator, currentAdapter };
