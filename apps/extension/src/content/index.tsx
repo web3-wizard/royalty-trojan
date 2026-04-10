@@ -18,8 +18,17 @@ let currentCreator: CreatorIdentity | null = null;
 let modalRoot: HTMLDivElement | null = null;
 let reactRoot: Root | null = null;
 
-function getCreatorDomain(creator: CreatorIdentity): string {
-  if (creator.platform === 'youtube') return 'example.com';
+function extractDomainFromCreator(creator: CreatorIdentity): string {
+  // TODO: Replace with verified-domain extraction from creator profile metadata.
+  // For now, use the page URL hostname when available, with platform-domain fallback.
+  try {
+    const hostname = new URL(creator.url).hostname.replace(/^www\./, '');
+    if (hostname) return hostname;
+  } catch {
+    // Ignore malformed URLs and fallback to platform defaults.
+  }
+
+  if (creator.platform === 'youtube') return 'youtube.com';
   if (creator.platform === 'x') return 'x.com';
   return 'twitch.tv';
 }
@@ -35,12 +44,6 @@ function injectCreatorBadge(creator: CreatorIdentity, wallet: string) {
     creatorName: creator.displayName || creator.identifier,
     platform: creator.platform,
   });
-}
-
-async function resolveAndInjectCreatorBadge(creator: CreatorIdentity) {
-  const wallet = await resolveCreatorWallet(getCreatorDomain(creator), creator.identifier);
-  if (currentCreator !== creator || !wallet) return;
-  injectCreatorBadge(creator, wallet);
 }
 
 function showModal(creatorName: string, recipientWallet: string) {
@@ -80,16 +83,24 @@ function showModal(creatorName: string, recipientWallet: string) {
   );
 }
 
-function detectPlatform() {
+async function detectPlatform() {
   const url = location.href;
   const adapter = adapters.find((candidate) => candidate.match(url));
   if (adapter) {
     currentAdapter = adapter;
     currentCreator = adapter.extractCreator();
     console.log('[Royalty Trojan] Platform detected:', currentCreator);
+
     if (currentCreator) {
-      void resolveAndInjectCreatorBadge(currentCreator);
+      // Attempt to resolve wallet and inject badge on creator pages.
+      const creator = currentCreator;
+      const domain = extractDomainFromCreator(creator);
+      const wallet = await resolveCreatorWallet(domain, creator.identifier);
+      if (currentCreator === creator && wallet) {
+        injectCreatorBadge(creator, wallet);
+      }
     }
+
     scanForButtons();
     startObserving();
   } else {
@@ -121,8 +132,7 @@ function attachInterceptor(button: HTMLElement) {
         return;
       }
 
-      let domain = '';
-      domain = getCreatorDomain(creator);
+      const domain = extractDomainFromCreator(creator);
 
       const wallet = await resolveCreatorWallet(domain, creator.identifier);
       if (!wallet) {
@@ -155,7 +165,7 @@ function startObserving() {
   });
 }
 
-detectPlatform();
+void detectPlatform();
 
 let lastUrl = location.href;
 new MutationObserver(() => {
@@ -163,7 +173,7 @@ new MutationObserver(() => {
   if (url !== lastUrl) {
     lastUrl = url;
     setTimeout(() => {
-      detectPlatform();
+      void detectPlatform();
     }, 1000);
   }
 }).observe(document, { subtree: true, childList: true });
