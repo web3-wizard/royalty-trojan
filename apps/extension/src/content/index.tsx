@@ -1,5 +1,6 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { Modal } from '../ui/modal/Modal';
+import { resolveCreatorWallet } from '../core/identity-client.js';
 import { YouTubeAdapter } from './youtube';
 import { XAdapter } from './x';
 import { TwitchAdapter } from './twitch';
@@ -81,7 +82,7 @@ function attachInterceptor(button: HTMLElement) {
 
   button.addEventListener(
     'click',
-    (event) => {
+    async (event) => {
       event.preventDefault();
       event.stopPropagation();
 
@@ -91,8 +92,22 @@ function attachInterceptor(button: HTMLElement) {
         return;
       }
 
-      const mockWallet = '5X9yG3qWj...';
-      showModal(creator.displayName || creator.identifier, mockWallet);
+      let domain = '';
+      if (creator.platform === 'youtube') {
+        domain = 'example.com';
+      } else if (creator.platform === 'x') {
+        domain = 'x.com';
+      } else {
+        domain = 'twitch.tv';
+      }
+
+      const wallet = await resolveCreatorWallet(domain, creator.identifier);
+      if (!wallet) {
+        alert('Creator has not set up Bags payments yet.');
+        return;
+      }
+
+      showModal(creator.displayName || creator.identifier, wallet);
     },
     true
   );
