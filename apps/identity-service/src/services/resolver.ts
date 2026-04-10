@@ -4,8 +4,14 @@ import { getCachedWallet, setCachedWallet } from './cache.js';
 
 const CACHE_TTL = Number(process.env.CACHE_TTL) || 3600;
 
-export async function resolveWallet(domain: string, handle?: string): Promise<string | null> {
-  const cacheKey = handle ? `${domain}:${handle}` : domain;
+export async function resolveWallet(domain?: string, handle?: string): Promise<string | null> {
+  if (!domain && !handle) return null;
+
+  const cacheKey = domain && handle
+    ? `${domain}:${handle}`
+    : domain
+      ? domain
+      : `nostr:${handle!}`;
   
   // Check cache
   const cached = await getCachedWallet(cacheKey);
@@ -15,10 +21,12 @@ export async function resolveWallet(domain: string, handle?: string): Promise<st
   }
 
   // 1. Try DNS
-  const dnsWallet = await resolveWalletFromDNS(domain);
-  if (dnsWallet) {
-    await setCachedWallet(cacheKey, dnsWallet, CACHE_TTL);
-    return dnsWallet;
+  if (domain) {
+    const dnsWallet = await resolveWalletFromDNS(domain);
+    if (dnsWallet) {
+      await setCachedWallet(cacheKey, dnsWallet, CACHE_TTL);
+      return dnsWallet;
+    }
   }
 
   // 2. Fallback to Nostr (if handle provided)

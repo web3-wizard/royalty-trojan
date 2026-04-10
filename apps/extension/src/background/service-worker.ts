@@ -3,7 +3,17 @@ import { BagsClient } from '../core/bags-client.js';
 import type { WalletAdapter } from '../core/wallet-adapter/index.js';
 
 type MessageSender = unknown;
-type MessageResponse = { success: boolean; [key: string]: unknown };
+type StructuredError = {
+  code: string;
+  message: string;
+  details?: unknown;
+};
+
+type MessageResponse = {
+  success: boolean;
+  error?: StructuredError;
+  [key: string]: unknown;
+};
 type MessagePayload = {
   type: string;
   payload?: {
@@ -34,6 +44,34 @@ const chrome = globalThis as typeof globalThis & {
 let wallet: WalletAdapter = new PhantomWalletAdapter();
 const bagsClient = new BagsClient();
 
+function toStructuredError(error: unknown, fallbackMessage: string, code: string): StructuredError {
+  if (error instanceof Error) {
+    return {
+      code,
+      message: error.message || fallbackMessage,
+      details: error.stack,
+    };
+  }
+
+  return {
+    code,
+    message: fallbackMessage,
+    details: error,
+  };
+}
+
+function sendError(
+  sendResponse: (response: MessageResponse) => void,
+  code: string,
+  error: unknown,
+  fallbackMessage: string
+) {
+  sendResponse({
+    success: false,
+    error: toStructuredError(error, fallbackMessage, code),
+  });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Royalty Trojan installed');
 });
@@ -42,84 +80,84 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void sender;
 
   (async () => {
-    switch (message.type) {
-      case 'CONNECT_WALLET': {
-        try {
-          await wallet.connect();
-          sendResponse({ success: true, publicKey: wallet.publicKey });
-        } catch (error) {
-          const messageText = error instanceof Error ? error.message : 'Failed to connect wallet';
-          sendResponse({ success: false, error: messageText });
-        }
-        break;
-      }
-
-      case 'DISCONNECT_WALLET': {
-        try {
-          await wallet.disconnect();
-          sendResponse({ success: true });
-        } catch (error) {
-          const messageText = error instanceof Error ? error.message : 'Failed to disconnect wallet';
-          sendResponse({ success: false, error: messageText });
-        }
-        break;
-      }
-
-      case 'GET_WALLET_STATUS': {
-        sendResponse({
-          success: true,
-          connected: wallet.connected,
-          publicKey: wallet.publicKey,
-          ready: wallet.ready,
-        });
-        break;
-      }
-
-      case 'CREATE_STREAM': {
-        try {
-          const { recipient, amount, tier } = message.payload ?? {};
-
-          if (!recipient || typeof amount !== 'number') {
-            sendResponse({ success: false, error: 'Missing recipient or amount' });
-            break;
-          }
-
-          if (!wallet.connected) {
+    try {
+      switch (message.type) {
+        case 'CONNECT_WALLET': {
+          try {
             await wallet.connect();
+            sendResponse({ success: true, publicKey: wallet.publicKey });
+          } catch (error) {
+            sendError(sendResponse, 'CONNECT_WALLET_FAILED', error, 'Failed to connect wallet');
           }
-
-          const signature = await bagsClient.createStream(wallet, recipient, amount);
-          sendResponse({ success: true, signature, tier });
-        } catch (error) {
-          const messageText = error instanceof Error ? error.message : 'Failed to create stream';
-          sendResponse({ success: false, error: messageText });
+          break;
         }
-        break;
-      }
 
-      case 'CANCEL_STREAM': {
-        try {
-          const { streamId } = message.payload ?? {};
-          if (!streamId) {
-            sendResponse({ success: false, error: 'Missing streamId' });
-            break;
+        case 'DISCONNECT_WALLET': {
+          try {
+            await wallet.disconnect();
+            sendResponse({ success: true });
+          } catch (error) {
+            sendError(sendResponse, 'DISCONNECT_WALLET_FAILED', error, 'Failed to disconnect wallet');
           }
-
-          if (!wallet.connected) {
-            await wallet.connect();
-          }
-
-          const signature = await bagsClient.cancelStream(wallet, streamId);
-          sendResponse({ success: true, signature });
-        } catch (error) {
-          const messageText = error instanceof Error ? error.message : 'Failed to cancel stream';
-          sendResponse({ success: false, error: messageText });
+          break;
         }
-        break;
-      }
 
-      default:
-        sendResponse({ success: false, error: 'Unknown message type' });
+        case 'GET_WALLET_STATUS': {
+          sendResponse({
+            success: true,
+            connected: wallet.connected,
+            publicKey: wallet.publicKey,
+            ready: wallet.ready,
+          });
+          break;
+        }
+
+        case 'CREATE_STREAM': {
+          try {
+            const { recipient, amount, tier } = message.payload ?? {};
+
+            if (!recipient || typeof amount !== 'number') {
+              sendError(sendResponse, 'INVALID_CREATE_STREAM_PAYLOAD', null, 'Missing recipient or amount');
+              break;
+            }
+
+            if (!wallet.connected) {
+              await wallet.connect();
+            }
+
+            const signature = await bagsClient.createStream(wallet, recipient, amount);
+            sendResponse({ success: true, signature, tier });
+          } catch (error) {
+            sendError(sendResponse, 'CREATE_STREAM_FAILED', error, 'Failed to create stream');
+          }
+          break;
+        }
+
+        case 'CANCEL_STREAM': {
+          try {
+            const { streamId } = message.payload ?? {};
+            if (!streamId) {
+              sendError(sendResponse, 'INVALID_CANCEL_STREAM_PAYLOAD', null, 'Missing streamId');
+              break;
+            }
+
+            if (!wallet.connected) {
+              await wallet.connect();
+            }
+
+            const signature = await bagsClient.cancelStream(wallet, streamId);
+            sendResponse({ success: true, signature });
+          } catch (error) {
+            sendError(sendResponse, 'CANCEL_STREAM_FAILED', error, 'Failed to cancel stream');
+          }
+          break;
+        }
+
+        default:
+          sendError(sendResponse, 'UNKNOWN_MESSAGE_TYPE', null, 'Unknown message type');
+      }
+    } catch (error) {
+      sendError(sendResponse, 'BACKGROUND_UNHANDLED_ERROR', error, 'Unexpected background error');
     }
   })();
 

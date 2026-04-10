@@ -12,8 +12,14 @@ interface WalletStatusResponse {
   publicKey: string | null;
   ready?: boolean;
   success?: boolean;
-  error?: string;
+  error?: string | { code?: string; message?: string; details?: unknown };
   signature?: string;
+}
+
+function getErrorMessage(error: WalletStatusResponse['error'], fallback: string): string {
+  if (typeof error === 'string' && error) return error;
+  if (error && typeof error === 'object' && typeof error.message === 'string') return error.message;
+  return fallback;
 }
 
 declare const chrome: {
@@ -63,7 +69,7 @@ export const Modal: React.FC<ModalProps> = ({ creatorName, recipientWallet, onCl
         setWalletConnected(true);
         setPublicKey(response.publicKey);
       } else {
-        setError(response.error || 'Failed to connect wallet');
+        setError(getErrorMessage(response.error, 'Failed to connect wallet'));
       }
     });
   };
@@ -88,7 +94,7 @@ export const Modal: React.FC<ModalProps> = ({ creatorName, recipientWallet, onCl
           onSuccess(response.signature, selectedTier);
         } else {
           setLoading(false);
-          setError(response.error || 'Stream creation failed');
+          setError(getErrorMessage(response.error, 'Stream creation failed'));
         }
       }
     );

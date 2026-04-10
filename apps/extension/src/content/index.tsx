@@ -2,6 +2,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { Modal } from '../ui/modal/Modal';
 import { resolveCreatorWallet } from '../core/identity-client.js';
 import { injectBadge } from '../ui/badge/Badge.js';
+import { showToast } from './notifications';
 import { YouTubeAdapter } from './youtube';
 import { XAdapter } from './x';
 import { TwitchAdapter } from './twitch';
@@ -30,6 +31,7 @@ async function extractDomainFromCreator(): Promise<string | null> {
 function injectCreatorBadge(creator: CreatorIdentity, wallet: string) {
   if (!creator.badgeTarget) {
     console.warn('No badge target found for', creator.platform);
+    showToast('Could not place creator badge on this page.', 'info');
     return;
   }
 
@@ -86,24 +88,29 @@ async function detectPlatform() {
     console.log('[Royalty Trojan] Platform detected:', currentCreator);
 
     if (currentCreator) {
-      let domain: string | null = null;
-      if ('extractDomain' in currentAdapter && currentAdapter.extractDomain) {
-        domain = await extractDomainFromCreator();
-      }
-
-      const handle = currentCreator.identifier;
-      const wallet = await resolveCreatorWallet(domain || undefined, handle);
-      if (wallet) {
-        if (currentCreator.badgeTarget) {
-          injectBadge(currentCreator.badgeTarget, {
-            creatorWallet: wallet,
-            creatorName: currentCreator.displayName || currentCreator.identifier,
-            platform: currentCreator.platform,
-          });
+      try {
+        let domain: string | null = null;
+        if ('extractDomain' in currentAdapter && currentAdapter.extractDomain) {
+          domain = await extractDomainFromCreator();
         }
-        (currentCreator as CreatorWithWallet).wallet = wallet;
-      } else {
-        console.log('No Bags wallet found for creator');
+
+        const handle = currentCreator.identifier;
+        const wallet = await resolveCreatorWallet(domain || undefined, handle);
+        if (wallet) {
+          if (currentCreator.badgeTarget) {
+            injectBadge(currentCreator.badgeTarget, {
+              creatorWallet: wallet,
+              creatorName: currentCreator.displayName || currentCreator.identifier,
+              platform: currentCreator.platform,
+            });
+          }
+          (currentCreator as CreatorWithWallet).wallet = wallet;
+        } else {
+          console.log('No Bags wallet found for creator');
+        }
+      } catch (error) {
+        console.error('Failed to resolve creator wallet during detection:', error);
+        showToast('Unable to verify creator wallet right now. Please try again.', 'error');
       }
     }
 
@@ -135,23 +142,30 @@ function attachInterceptor(button: HTMLElement) {
       const creator = currentCreator;
       if (!creator) {
         console.warn('No creator detected');
+        showToast('Creator was not detected on this page.', 'error');
         return;
       }
 
       const creatorWithWallet = creator as CreatorWithWallet;
       let wallet = creatorWithWallet.wallet;
 
-      if (!wallet) {
-        const domain = await extractDomainFromCreator();
-        wallet = await resolveCreatorWallet(domain || undefined, creator.identifier);
-        if (wallet) {
-          creatorWithWallet.wallet = wallet;
-          injectCreatorBadge(creator, wallet);
+      try {
+        if (!wallet) {
+          const domain = await extractDomainFromCreator();
+          wallet = await resolveCreatorWallet(domain || undefined, creator.identifier);
+          if (wallet) {
+            creatorWithWallet.wallet = wallet;
+            injectCreatorBadge(creator, wallet);
+          }
         }
+      } catch (error) {
+        console.error('Failed to resolve wallet for subscription:', error);
+        showToast('Could not contact wallet resolver. Try again in a moment.', 'error');
+        return;
       }
 
       if (!wallet) {
-        alert('Creator has not set up Bags payments yet.');
+        showToast('Creator has not set up Bags payments yet.', 'info');
         return;
       }
 

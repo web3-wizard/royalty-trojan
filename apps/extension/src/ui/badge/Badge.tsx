@@ -7,8 +7,14 @@ interface WalletStatusResponse {
   publicKey: string | null;
   ready?: boolean;
   success?: boolean;
-  error?: string;
+  error?: string | { code?: string; message?: string; details?: unknown };
   signature?: string;
+}
+
+function getErrorMessage(error: WalletStatusResponse['error'], fallback: string): string {
+  if (typeof error === 'string' && error) return error;
+  if (error && typeof error === 'object' && typeof error.message === 'string') return error.message;
+  return fallback;
 }
 
 declare const chrome: {
@@ -86,7 +92,7 @@ export const Badge: React.FC<BadgeProps> = ({ creatorWallet, creatorName, platfo
           if (response.success) {
             setUserStreams(userStreams.filter(s => s.id !== streamId));
           } else {
-            setError(response.error || 'Cancel failed');
+            setError(getErrorMessage(response.error, 'Cancel failed'));
           }
         }
       );

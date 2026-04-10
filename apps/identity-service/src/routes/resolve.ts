@@ -1,6 +1,6 @@
 import { resolveWallet } from '../services/resolver.js';
 
-type ResolveQuery = { domain: string; handle?: string };
+type ResolveQuery = { domain?: string; handle?: string };
 type ResolveSuccess = { wallet: string };
 type ResolveError = { error: string };
 
@@ -28,11 +28,11 @@ const resolveRoute: FastifyPluginAsyncLike = async (fastify: FastifyLike) => {
     schema: {
       querystring: {
         type: 'object',
-        required: ['domain'],
         properties: {
           domain: { type: 'string' },
           handle: { type: 'string' },
         },
+        anyOf: [{ required: ['domain'] }, { required: ['handle'] }],
       },
       response: {
         200: {
