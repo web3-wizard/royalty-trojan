@@ -18,9 +18,13 @@ let currentCreator: CreatorIdentity | null = null;
 let modalRoot: HTMLDivElement | null = null;
 let reactRoot: Root | null = null;
 
-function extractDomainFromCreator(creator: CreatorIdentity): string {
-  // TODO: Replace with verified-domain extraction from creator profile metadata.
-  // For now, use the page URL hostname when available, with platform-domain fallback.
+async function extractDomainFromCreator(creator: CreatorIdentity): Promise<string> {
+  if (creator.platform === 'youtube' && currentAdapter?.extractDomain) {
+    const domain = await currentAdapter.extractDomain();
+    if (domain) return domain;
+  }
+
+  // Fallback for platforms or when profile lookup fails.
   try {
     const hostname = new URL(creator.url).hostname.replace(/^www\./, '');
     if (hostname) return hostname;
@@ -94,7 +98,7 @@ async function detectPlatform() {
     if (currentCreator) {
       // Attempt to resolve wallet and inject badge on creator pages.
       const creator = currentCreator;
-      const domain = extractDomainFromCreator(creator);
+      const domain = await extractDomainFromCreator(creator);
       const wallet = await resolveCreatorWallet(domain, creator.identifier);
       if (currentCreator === creator && wallet) {
         injectCreatorBadge(creator, wallet);
@@ -132,7 +136,7 @@ function attachInterceptor(button: HTMLElement) {
         return;
       }
 
-      const domain = extractDomainFromCreator(creator);
+      const domain = await extractDomainFromCreator(creator);
 
       const wallet = await resolveCreatorWallet(domain, creator.identifier);
       if (!wallet) {

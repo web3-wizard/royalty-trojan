@@ -5,6 +5,63 @@ export class YouTubeAdapter implements PlatformAdapter {
     return url.includes('youtube.com') || url.includes('youtu.be');
   }
 
+  async extractDomain(): Promise<string | null> {
+    // 1. Prefer the current channel's About page links if available.
+    const canonical = document.querySelector('link[rel="canonical"]')?.getAttribute('href');
+    if (canonical) {
+      const handleMatch = canonical.match(/youtube\.com\/@([^\/]+)/);
+      if (handleMatch) {
+        // The handle may be a vanity/custom URL, but the actual domain should come from About links.
+        // Continue to the About-page lookup below.
+      }
+    }
+
+    // 2. Fetch channel about page if not already there.
+    if (!location.pathname.includes('/about')) {
+      try {
+        const channelId = this.extractChannelIdFromUrl(location.href);
+        if (!channelId) return null;
+
+        const aboutUrl = `https://www.youtube.com/channel/${channelId}/about`;
+        const response = await fetch(aboutUrl);
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        const linkElements = doc.querySelectorAll('#link-list-container a.yt-simple-endpoint');
+        for (const link of linkElements) {
+          const href = link.getAttribute('href');
+          if (href && href.startsWith('http')) {
+            try {
+              const url = new URL(href);
+              return url.hostname.replace(/^www\./, '');
+            } catch {
+              // Ignore malformed URLs and keep scanning.
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch YouTube about page:', error);
+      }
+    } else {
+      // 3. If we're already on the About page, extract links directly.
+      const links = document.querySelectorAll('#link-list-container a.yt-simple-endpoint');
+      for (const link of links) {
+        const href = link.getAttribute('href');
+        if (href) {
+          try {
+            const url = new URL(href);
+            return url.hostname.replace(/^www\./, '');
+          } catch {
+            // Ignore malformed links and continue.
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
   extractCreator(): CreatorIdentity | null {
     // Try to get channel info from meta tags or URL
     const canonical = document.querySelector('link[rel="canonical"]')?.getAttribute('href');

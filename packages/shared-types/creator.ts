@@ -10,5 +10,6 @@ export interface CreatorIdentity {
 export interface PlatformAdapter {
   match(url: string): boolean;
   extractCreator(): CreatorIdentity | null;
+  extractDomain?(): Promise<string | null>;
   findSubscribeButtons(): HTMLElement[];
 }
