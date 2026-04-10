@@ -43,6 +43,7 @@ export const Modal: React.FC<ModalProps> = ({ creatorName, recipientWallet, onCl
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
+  const [success, setSuccess] = useState<{ signature: string; tier: Tier } | null>(null);
 
   useEffect(() => {
     // Check current wallet status from background
@@ -80,15 +81,38 @@ export const Modal: React.FC<ModalProps> = ({ creatorName, recipientWallet, onCl
         },
       },
       (response: WalletStatusResponse) => {
-        setLoading(false);
         if (response.success && response.signature) {
+          setSuccess({ signature: response.signature, tier: selectedTier });
+          setLoading(false);
           onSuccess(response.signature, selectedTier);
         } else {
+          setLoading(false);
           setError(response.error || 'Stream creation failed');
         }
       }
     );
   };
+
+  if (success) {
+    return (
+      <div style={overlayStyle}>
+        <div style={modalStyle}>
+          <h2>🎉 Success!</h2>
+          <p>Your {success.tier.name} stream has been created.</p>
+          <p>
+            <a
+              href={`https://solscan.io/tx/${success.signature}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View transaction
+            </a>
+          </p>
+          <button onClick={onClose}>Close</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={overlayStyle}>
