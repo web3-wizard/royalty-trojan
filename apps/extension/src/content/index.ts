@@ -1,7 +1,19 @@
 import { YouTubeAdapter } from './youtube';
 import { XAdapter } from './x';
 import { TwitchAdapter } from './twitch';
-import type { PlatformAdapter, CreatorIdentity } from '@shared-types/creator';
+
+interface CreatorIdentity {
+  platform: string;
+  handle: string;
+  wallet?: string;
+  domain?: string;
+}
+
+interface PlatformAdapter {
+  match(url: string): boolean;
+  extractCreator(): CreatorIdentity;
+  findSubscribeButtons(): HTMLElement[];
+}
 
 const adapters: PlatformAdapter[] = [
   new YouTubeAdapter(),
@@ -31,7 +43,7 @@ function scanForButtons() {
   if (!currentAdapter) return;
   const buttons = currentAdapter.findSubscribeButtons();
   console.log(`[Royalty Trojan] Found ${buttons.length} subscribe button(s)`);
-  buttons.forEach((btn, i) => {
+  buttons.forEach((btn: HTMLElement, i: number) => {
     // Mark for later interception (will be handled in next phase)
     btn.setAttribute('data-rt-detected', 'true');
     console.log(`[Royalty Trojan] Button ${i+1}:`, btn);
