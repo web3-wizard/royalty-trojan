@@ -12,6 +12,16 @@ type StreamConfig = {
   startTime: number;
 };
 
+type StreamSigner = {
+  publicKey: PublicKey;
+  signAndSendTransaction: (tx: WalletTx) => Promise<string>;
+};
+
+type StreamService = {
+  createStream(config: StreamConfig, signer: StreamSigner): Promise<string>;
+  cancelStream(streamId: string, signer: StreamSigner): Promise<string>;
+};
+
 export class BagsClient {
   private readonly bags: BagsSDK;
   private readonly connection: Connection;
@@ -33,83 +43,13 @@ export class BagsClient {
     };
   }
 
-  private getStreamApi(): Record<string, unknown> {
-    const sdk = this.bags as unknown as Record<string, unknown>;
-
-    // Support possible SDK variants for stream APIs.
-    const streamApi =
-      (sdk.stream as Record<string, unknown> | undefined)
-      || (sdk.streams as Record<string, unknown> | undefined)
-      || (sdk.solana as Record<string, unknown> | undefined)
-      || sdk;
-
-    return streamApi;
-  }
-
-  private async callCreateStream(
-    streamApi: Record<string, unknown>,
-    config: StreamConfig,
-    signer: { publicKey: PublicKey; signAndSendTransaction: (tx: WalletTx) => Promise<string> }
-  ): Promise<string> {
-    const candidates: Array<unknown> = [
-      streamApi.createStream,
-      (streamApi.stream as Record<string, unknown> | undefined)?.createStream,
-      (streamApi.streams as Record<string, unknown> | undefined)?.createStream,
-    ];
-
-    for (const candidate of candidates) {
-      if (typeof candidate !== 'function') continue;
-
-      const createFn = candidate as (...args: unknown[]) => Promise<unknown>;
-      try {
-        const signature = await createFn(config, signer);
-        if (typeof signature === 'string') return signature;
-      } catch {
-        // Try the next known signature/entrypoint.
-      }
-
-      try {
-        const signature = await createFn({ ...config, signer });
-        if (typeof signature === 'string') return signature;
-      } catch {
-        // Try the next known signature/entrypoint.
-      }
+  private getStreamService(): StreamService {
+    const sdk = this.bags as unknown as { stream?: StreamService; streams?: StreamService };
+    const service = sdk.stream ?? sdk.streams;
+    if (!service) {
+      throw new Error('Bags SDK stream service is unavailable in this SDK version');
     }
-
-    throw new Error('Bags SDK createStream API not available in this SDK build');
-  }
-
-  private async callCancelStream(
-    streamApi: Record<string, unknown>,
-    streamId: string,
-    signer: { publicKey: PublicKey; signAndSendTransaction: (tx: WalletTx) => Promise<string> }
-  ): Promise<string> {
-    const candidates: Array<unknown> = [
-      streamApi.cancelStream,
-      (streamApi.stream as Record<string, unknown> | undefined)?.cancelStream,
-      (streamApi.streams as Record<string, unknown> | undefined)?.cancelStream,
-    ];
-
-    for (const candidate of candidates) {
-      if (typeof candidate !== 'function') continue;
-
-      const cancelFn = candidate as (...args: unknown[]) => Promise<unknown>;
-      try {
-        const signature = await cancelFn(streamId, signer);
-        if (typeof signature === 'string') return signature;
-      } catch {
-        // Try the next known signature/entrypoint.
-      }
-
-      try {
-        const signature = await cancelFn({ streamId, signer });
-        if (typeof signature === 'string') return signature;
-      } catch {
-        // Try the next known signature/entrypoint.
-      }
-    }
-
-    throw new Error('Bags SDK cancelStream API not available in this SDK build');
+    return service;
   }
 
   async createStream(
@@ -136,9 +76,9 @@ export class BagsClient {
     };
 
     const signer = this.getSigner(wallet, sender);
-    const streamApi = this.getStreamApi();
+    const streamService = this.getStreamService();
 
-    return this.callCreateStream(streamApi, config, signer);
+    return streamService.createStream(config, signer);
   }
 
   async cancelStream(wallet: WalletAdapter, streamId: string): Promise<string> {
@@ -147,8 +87,8 @@ export class BagsClient {
 
     const sender = new PublicKey(wallet.publicKey);
     const signer = this.getSigner(wallet, sender);
-    const streamApi = this.getStreamApi();
+    const streamService = this.getStreamService();
 
-    return this.callCancelStream(streamApi, streamId, signer);
+    return streamService.cancelStream(streamId, signer);
   }
 }
