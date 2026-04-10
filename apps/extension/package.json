@@ -1,4 +1,9 @@
-"scripts": {
-  "dev": "vite build --watch",
-  "build": "vite build"
+{
+  "name": "royalty-trojan-extension",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build"
+  }
 }
