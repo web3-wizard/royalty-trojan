@@ -1,5 +1,10 @@
-"scripts": {
-  "dev": "nodemon --exec ts-node src/server.ts",
-  "build": "tsc",
-  "start": "node dist/server.js"
+{
+  "name": "royalty-trojan-identity-service",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  }
 }
