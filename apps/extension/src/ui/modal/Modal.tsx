@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Spinner } from '../spinner/Spinner';
 
 interface Tier {
   name: string;
@@ -124,7 +125,7 @@ export const Modal: React.FC<ModalProps> = ({ creatorName, recipientWallet, onCl
           <div>
             <p>Connect your wallet to continue</p>
             <button onClick={handleConnectWallet} disabled={loading}>
-              {loading ? 'Connecting...' : 'Connect Phantom'}
+              {loading ? <><Spinner /> Connecting...</> : 'Connect Phantom'}
             </button>
             {error && <p style={{ color: 'red' }}>{error}</p>}
           </div>
@@ -150,7 +151,7 @@ export const Modal: React.FC<ModalProps> = ({ creatorName, recipientWallet, onCl
               ))}
             </div>
             <button onClick={handleSubscribe} disabled={!selectedTier || loading}>
-              {loading ? 'Creating Stream...' : `Subscribe with ${selectedTier?.name}`}
+              {loading ? <><Spinner /> Creating Stream...</> : `Subscribe with ${selectedTier?.name}`}
             </button>
             {error && <p style={{ color: 'red' }}>{error}</p>}
           </div>

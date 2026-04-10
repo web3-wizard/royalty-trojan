@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Spinner } from '../spinner/Spinner';
 
 interface BadgeProps {
   creatorWallet: string;
@@ -93,7 +94,12 @@ export const Badge: React.FC<BadgeProps> = ({ creatorWallet, creatorName, platfo
       {isExpanded && (
         <div style={dropdownStyle}>
           <h4>Your Support for {creatorName}</h4>
-          {loading && <div>Loading...</div>}
+          {loading && (
+            <div style={loadingRowStyle}>
+              <Spinner size={14} />
+              <span>Loading...</span>
+            </div>
+          )}
           {error && <div style={{ color: 'red' }}>{error}</div>}
           {!loading && userStreams.length === 0 && (
             <p>You haven't started a stream yet.</p>
@@ -187,6 +193,12 @@ const cancelButtonStyle: React.CSSProperties = {
   borderRadius: '4px',
   cursor: 'pointer',
   fontSize: '12px',
+};
+
+const loadingRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
 };
 
 // Function to inject badge into DOM
