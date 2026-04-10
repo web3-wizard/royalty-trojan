@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import dotenv from 'dotenv';
 import resolveRoute from './routes/resolve.js';
 import revenueRoute from './routes/revenue.js';
@@ -11,6 +12,11 @@ dotenv.config();
 async function main() {
 	const fastify = Fastify({ logger: true });
 	await fastify.register(cors, { origin: true });
+	await fastify.register(rateLimit, {
+		max: Number(process.env.RATE_LIMIT_MAX) || 100,
+		timeWindow: process.env.RATE_LIMIT_WINDOW || '1 minute',
+		allowList: (request) => request.url === '/health',
+	});
 
 	// Initialize Redis
 	await initRedis();

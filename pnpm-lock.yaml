@@ -48,6 +48,9 @@ importers:
       '@fastify/cors':
         specifier: ^11.2.0
         version: 11.2.0
+      '@fastify/rate-limit':
+        specifier: ^10.3.0
+        version: 10.3.0
       axios:
         specifier: ^1.9.0
         version: 1.11.0
@@ -342,6 +345,9 @@ packages:
   '@fastify/proxy-addr@5.1.0':
     resolution: {integrity: sha512-INS+6gh91cLUjB+PVHfu1UqcB76Sqtpyp7bnL+FYojhjygvOPA9ctiD/JDKsyD9Xgu4hUhCSJBPig/w7duNajw==, tarball: https://registry.npmjs.org/@fastify/proxy-addr/-/proxy-addr-5.1.0.tgz}
 
+  '@fastify/rate-limit@10.3.0':
+    resolution: {integrity: sha512-eIGkG9XKQs0nyynatApA3EVrojHOuq4l6fhB4eeCk4PIOeadvOJz9/4w3vGI44Go17uaXOWEcPkaD8kuKm7g6Q==, tarball: https://registry.npmjs.org/@fastify/rate-limit/-/rate-limit-10.3.0.tgz}
+
   '@isaacs/ttlcache@1.4.1':
     resolution: {integrity: sha512-RQgQ4uQ+pLbqXfOmieB91ejmLwvSgv9nLx6sT6sD83s7umBypgg+OIBOBbEUiJXrfpnp9j0mRhYYdzp9uqq3lA==, tarball: https://registry.npmjs.org/@isaacs/ttlcache/-/ttlcache-1.4.1.tgz}
     engines: {node: '>=12'}
@@ -375,6 +381,10 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==, tarball: https://registry.npmjs.org/@jridgewell/trace-mapping/-/trace-mapping-0.3.9.tgz}
+
+  '@lukeed/ms@2.0.2':
+    resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==, tarball: https://registry.npmjs.org/@lukeed/ms/-/ms-2.0.2.tgz}
+    engines: {node: '>=8'}
 
   '@meteora-ag/cp-amm-sdk@1.1.0':
     resolution: {integrity: sha512-CFYSGLgSSTL5oDSrL5bx+oCi51rkvfuFXdMVDEZmnljlnyt2vxbrzRCkCTzxN7ABCYjuCvkLoVrT1JiBh39k2A==, tarball: https://registry.npmjs.org/@meteora-ag/cp-amm-sdk/-/cp-amm-sdk-1.1.0.tgz}
@@ -3148,6 +3158,12 @@ snapshots:
       '@fastify/forwarded': 3.0.1
       ipaddr.js: 2.3.0
 
+  '@fastify/rate-limit@10.3.0':
+    dependencies:
+      '@lukeed/ms': 2.0.2
+      fastify-plugin: 5.1.0
+      toad-cache: 3.7.0
+
   '@isaacs/ttlcache@1.4.1': {}
 
   '@jest/schemas@29.6.3':
@@ -3191,6 +3207,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@lukeed/ms@2.0.2': {}
 
   '@meteora-ag/cp-amm-sdk@1.1.0(@types/node@25.6.0)(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(postcss@8.5.9)(typescript@6.0.2)(utf-8-validate@6.0.6)(yaml@2.8.3)':
     dependencies:
