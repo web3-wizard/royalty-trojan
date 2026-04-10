@@ -1,8 +1,10 @@
 const IDENTITY_SERVICE_BASE_URL = 'http://localhost:3001';
 
-export async function resolveCreatorWallet(domain: string, handle: string): Promise<string | null> {
+export async function resolveCreatorWallet(domain: string | undefined, handle: string): Promise<string | null> {
 	const url = new URL('/resolve', IDENTITY_SERVICE_BASE_URL);
-	url.searchParams.set('domain', domain);
+	if (domain) {
+		url.searchParams.set('domain', domain);
+	}
 	url.searchParams.set('handle', handle);
 
 	const response = await fetch(url.toString(), {

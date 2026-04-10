@@ -18,23 +18,13 @@ let currentCreator: CreatorIdentity | null = null;
 let modalRoot: HTMLDivElement | null = null;
 let reactRoot: Root | null = null;
 
-async function extractDomainFromCreator(creator: CreatorIdentity): Promise<string> {
+type CreatorWithWallet = CreatorIdentity & { wallet?: string };
+
+async function extractDomainFromCreator(): Promise<string | null> {
   if (currentAdapter?.extractDomain) {
-    const domain = await currentAdapter.extractDomain();
-    if (domain) return domain;
+    return currentAdapter.extractDomain();
   }
-
-  // Fallback for platforms or when profile lookup fails.
-  try {
-    const hostname = new URL(creator.url).hostname.replace(/^www\./, '');
-    if (hostname) return hostname;
-  } catch {
-    // Ignore malformed URLs and fallback to platform defaults.
-  }
-
-  if (creator.platform === 'youtube') return 'youtube.com';
-  if (creator.platform === 'x') return 'x.com';
-  return 'twitch.tv';
+  return null;
 }
 
 function injectCreatorBadge(creator: CreatorIdentity, wallet: string) {
@@ -96,12 +86,24 @@ async function detectPlatform() {
     console.log('[Royalty Trojan] Platform detected:', currentCreator);
 
     if (currentCreator) {
-      // Attempt to resolve wallet and inject badge on creator pages.
-      const creator = currentCreator;
-      const domain = await extractDomainFromCreator(creator);
-      const wallet = await resolveCreatorWallet(domain, creator.identifier);
-      if (currentCreator === creator && wallet) {
-        injectCreatorBadge(creator, wallet);
+      let domain: string | null = null;
+      if ('extractDomain' in currentAdapter && currentAdapter.extractDomain) {
+        domain = await extractDomainFromCreator();
+      }
+
+      const handle = currentCreator.identifier;
+      const wallet = await resolveCreatorWallet(domain || undefined, handle);
+      if (wallet) {
+        if (currentCreator.badgeTarget) {
+          injectBadge(currentCreator.badgeTarget, {
+            creatorWallet: wallet,
+            creatorName: currentCreator.displayName || currentCreator.identifier,
+            platform: currentCreator.platform,
+          });
+        }
+        (currentCreator as CreatorWithWallet).wallet = wallet;
+      } else {
+        console.log('No Bags wallet found for creator');
       }
     }
 
@@ -136,15 +138,22 @@ function attachInterceptor(button: HTMLElement) {
         return;
       }
 
-      const domain = await extractDomainFromCreator(creator);
+      const creatorWithWallet = creator as CreatorWithWallet;
+      let wallet = creatorWithWallet.wallet;
 
-      const wallet = await resolveCreatorWallet(domain, creator.identifier);
+      if (!wallet) {
+        const domain = await extractDomainFromCreator();
+        wallet = await resolveCreatorWallet(domain || undefined, creator.identifier);
+        if (wallet) {
+          creatorWithWallet.wallet = wallet;
+          injectCreatorBadge(creator, wallet);
+        }
+      }
+
       if (!wallet) {
         alert('Creator has not set up Bags payments yet.');
         return;
       }
-
-      injectCreatorBadge(creator, wallet);
 
       showModal(creator.displayName || creator.identifier, wallet);
     },
