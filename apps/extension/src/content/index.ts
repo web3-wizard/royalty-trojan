@@ -1,3 +1,6 @@
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { Modal } from '../ui/modal/Modal';
 import { YouTubeAdapter } from './youtube';
 import { XAdapter } from './x';
 import { TwitchAdapter } from './twitch';
@@ -11,6 +14,45 @@ const adapters: PlatformAdapter[] = [
 
 let currentAdapter: PlatformAdapter | null = null;
 let currentCreator: CreatorIdentity | null = null;
+let modalRoot: HTMLDivElement | null = null;
+let reactRoot: ReturnType<typeof createRoot> | null = null;
+
+function showModal(creatorName: string, recipientWallet: string) {
+  if (modalRoot) {
+    reactRoot?.unmount();
+    modalRoot.remove();
+    modalRoot = null;
+    reactRoot = null;
+  }
+
+  modalRoot = document.createElement('div');
+  modalRoot.id = 'royalty-trojan-modal';
+  document.body.appendChild(modalRoot);
+
+  reactRoot = createRoot(modalRoot);
+
+  const closeModal = () => {
+    if (!modalRoot) return;
+    reactRoot?.unmount();
+    modalRoot.remove();
+    modalRoot = null;
+    reactRoot = null;
+  };
+
+  const handleSuccess = (signature: string, tier: any) => {
+    console.log('Stream created!', signature, tier);
+    setTimeout(closeModal, 3000);
+  };
+
+  reactRoot.render(
+    <Modal
+      creatorName={creatorName}
+      recipientWallet={recipientWallet}
+      onClose={closeModal}
+      onSuccess={handleSuccess}
+    />
+  );
+}
 
 function detectPlatform() {
   const url = location.href;
@@ -31,11 +73,30 @@ function scanForButtons() {
   if (!currentAdapter) return;
   const buttons = currentAdapter.findSubscribeButtons();
   console.log(`[Royalty Trojan] Found ${buttons.length} subscribe button(s)`);
-  buttons.forEach((btn: HTMLElement, i: number) => {
-    // Mark for later interception (will be handled in next phase)
-    btn.setAttribute('data-rt-detected', 'true');
-    console.log(`[Royalty Trojan] Button ${i+1}:`, btn);
-  });
+  buttons.forEach(attachInterceptor);
+}
+
+function attachInterceptor(button: HTMLElement) {
+  if (button.hasAttribute('data-rt-intercepted')) return;
+  button.setAttribute('data-rt-intercepted', 'true');
+
+  button.addEventListener(
+    'click',
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const creator = currentCreator;
+      if (!creator) {
+        console.warn('No creator detected');
+        return;
+      }
+
+      const mockWallet = '5X9yG3qWj...';
+      showModal(creator.displayName || creator.identifier, mockWallet);
+    },
+    true
+  );
 }
 
 let observer: MutationObserver | null = null;
