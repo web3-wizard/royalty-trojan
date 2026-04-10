@@ -1,6 +1,7 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { Modal } from '../ui/modal/Modal';
 import { resolveCreatorWallet } from '../core/identity-client.js';
+import { injectBadge } from '../ui/badge/Badge.js';
 import { YouTubeAdapter } from './youtube';
 import { XAdapter } from './x';
 import { TwitchAdapter } from './twitch';
@@ -16,6 +17,31 @@ let currentAdapter: PlatformAdapter | null = null;
 let currentCreator: CreatorIdentity | null = null;
 let modalRoot: HTMLDivElement | null = null;
 let reactRoot: Root | null = null;
+
+function getCreatorDomain(creator: CreatorIdentity): string {
+  if (creator.platform === 'youtube') return 'example.com';
+  if (creator.platform === 'x') return 'x.com';
+  return 'twitch.tv';
+}
+
+function injectCreatorBadge(creator: CreatorIdentity, wallet: string) {
+  if (!creator.badgeTarget) {
+    console.warn('No badge target found for', creator.platform);
+    return;
+  }
+
+  injectBadge(creator.badgeTarget, {
+    creatorWallet: wallet,
+    creatorName: creator.displayName || creator.identifier,
+    platform: creator.platform,
+  });
+}
+
+async function resolveAndInjectCreatorBadge(creator: CreatorIdentity) {
+  const wallet = await resolveCreatorWallet(getCreatorDomain(creator), creator.identifier);
+  if (currentCreator !== creator || !wallet) return;
+  injectCreatorBadge(creator, wallet);
+}
 
 function showModal(creatorName: string, recipientWallet: string) {
   if (modalRoot) {
@@ -61,6 +87,9 @@ function detectPlatform() {
     currentAdapter = adapter;
     currentCreator = adapter.extractCreator();
     console.log('[Royalty Trojan] Platform detected:', currentCreator);
+    if (currentCreator) {
+      void resolveAndInjectCreatorBadge(currentCreator);
+    }
     scanForButtons();
     startObserving();
   } else {
@@ -93,19 +122,15 @@ function attachInterceptor(button: HTMLElement) {
       }
 
       let domain = '';
-      if (creator.platform === 'youtube') {
-        domain = 'example.com';
-      } else if (creator.platform === 'x') {
-        domain = 'x.com';
-      } else {
-        domain = 'twitch.tv';
-      }
+      domain = getCreatorDomain(creator);
 
       const wallet = await resolveCreatorWallet(domain, creator.identifier);
       if (!wallet) {
         alert('Creator has not set up Bags payments yet.');
         return;
       }
+
+      injectCreatorBadge(creator, wallet);
 
       showModal(creator.displayName || creator.identifier, wallet);
     },
