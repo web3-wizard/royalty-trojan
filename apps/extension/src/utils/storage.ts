@@ -1,57 +1,22 @@
-type StorageRecord<T> = {
-  value: T;
-  expiresAt?: number;
-};
-
 declare const chrome: {
-  storage?: {
+  storage: {
     local: {
-      get(keys: string | string[] | null, callback: (items: Record<string, unknown>) => void): void;
-      set(items: Record<string, unknown>, callback?: () => void): void;
-      remove(keys: string | string[], callback?: () => void): void;
+      get(keys: string | string[]): Promise<Record<string, unknown>>;
+      set(items: Record<string, unknown>): Promise<void>;
     };
   };
 };
 
-function hasStorage(): boolean {
-  return Boolean(chrome?.storage?.local);
-}
-
-async function get<T>(key: string): Promise<T | null> {
-  if (!hasStorage()) return null;
-
-  const items = await new Promise<Record<string, unknown>>((resolve) => {
-    chrome.storage!.local.get(key, resolve);
-  });
-
-  const raw = items[key];
-  if (!raw || typeof raw !== 'object') return null;
-
-  const record = raw as StorageRecord<T>;
-  if (record.expiresAt && record.expiresAt <= Date.now()) {
-    await new Promise<void>((resolve) => {
-      chrome.storage!.local.remove(key, resolve);
-    });
-    return null;
-  }
-
-  return record.value ?? null;
-}
-
-async function set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
-  if (!hasStorage()) return;
-
-  const record: StorageRecord<T> = {
-    value,
-    expiresAt: ttlSeconds ? Date.now() + ttlSeconds * 1000 : undefined,
-  };
-
-  await new Promise<void>((resolve) => {
-    chrome.storage!.local.set({ [key]: record }, resolve);
-  });
-}
-
 export const storage = {
-  get,
-  set,
+  async get(key: string): Promise<any> {
+    const result = await chrome.storage.local.get(key);
+    return result[key];
+  },
+  async set(key: string, value: any, ttlSeconds?: number): Promise<void> {
+    const data: any = { [key]: value };
+    if (ttlSeconds) {
+      data[`${key}_expiry`] = Date.now() + ttlSeconds * 1000;
+    }
+    await chrome.storage.local.set(data);
+  },
 };
