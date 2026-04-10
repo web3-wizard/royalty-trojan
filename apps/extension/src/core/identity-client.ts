@@ -1,4 +1,14 @@
 const IDENTITY_SERVICE_BASE_URL = 'http://localhost:3001';
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY_MS = 300;
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableStatus(status: number): boolean {
+	return status === 429 || status >= 500;
+}
 
 export async function resolveCreatorWallet(domain?: string, handle?: string): Promise<string | null> {
 	if (!domain && !handle) return null;
@@ -11,14 +21,32 @@ export async function resolveCreatorWallet(domain?: string, handle?: string): Pr
 		url.searchParams.set('handle', handle);
 	}
 
-	try {
-		const response = await fetch(url.toString());
-		if (!response.ok) return null;
+	for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+		try {
+			const response = await fetch(url.toString());
 
-		const data = (await response.json()) as { wallet?: string };
-		return data.wallet ?? null;
-	} catch (error) {
-		console.error('Identity resolution failed:', error);
-		return null;
+			if (!response.ok) {
+				if (isRetryableStatus(response.status) && attempt < MAX_RETRIES) {
+					const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
+					await sleep(delay);
+					continue;
+				}
+				return null;
+			}
+
+			const data = (await response.json()) as { wallet?: string };
+			return data.wallet ?? null;
+		} catch (error) {
+			if (attempt < MAX_RETRIES) {
+				const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
+				await sleep(delay);
+				continue;
+			}
+
+			console.error('Identity resolution failed after retries:', error);
+			return null;
+		}
 	}
+
+	return null;
 }
