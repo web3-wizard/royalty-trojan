@@ -10,6 +10,7 @@ type MessagePayload = {
     recipient?: string;
     amount?: number;
     tier?: string;
+    streamId?: string;
   };
 };
 
@@ -91,6 +92,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ success: true, signature, tier });
         } catch (error) {
           const messageText = error instanceof Error ? error.message : 'Failed to create stream';
+          sendResponse({ success: false, error: messageText });
+        }
+        break;
+      }
+
+      case 'CANCEL_STREAM': {
+        try {
+          const { streamId } = message.payload ?? {};
+          if (!streamId) {
+            sendResponse({ success: false, error: 'Missing streamId' });
+            break;
+          }
+
+          if (!wallet.connected) {
+            await wallet.connect();
+          }
+
+          const signature = await bagsClient.cancelStream(wallet, streamId);
+          sendResponse({ success: true, signature });
+        } catch (error) {
+          const messageText = error instanceof Error ? error.message : 'Failed to cancel stream';
           sendResponse({ success: false, error: messageText });
         }
         break;

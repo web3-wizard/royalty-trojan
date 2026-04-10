@@ -35,4 +35,15 @@ export class BagsClient {
 
     return 'mock_signature_' + Date.now();
   }
+
+  async cancelStream(wallet: WalletAdapter, streamId: string): Promise<string> {
+    if (!wallet.connected) await wallet.connect();
+
+    if (!wallet.publicKey) {
+      throw new Error('Wallet not connected');
+    }
+
+    void streamId;
+    return 'mock_cancel_signature_' + Date.now();
+  }
 }
