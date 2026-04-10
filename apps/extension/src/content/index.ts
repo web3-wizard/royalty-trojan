@@ -4,7 +4,7 @@ import { Modal } from '../ui/modal/Modal';
 import { YouTubeAdapter } from './youtube';
 import { XAdapter } from './x';
 import { TwitchAdapter } from './twitch';
-import type { CreatorIdentity, PlatformAdapter } from '@shared-types/creator';
+import type { CreatorIdentity, PlatformAdapter } from '../../../../packages/shared-types/creator';
 
 const adapters: PlatformAdapter[] = [
   new YouTubeAdapter(),
@@ -45,12 +45,12 @@ function showModal(creatorName: string, recipientWallet: string) {
   };
 
   reactRoot.render(
-    <Modal
-      creatorName={creatorName}
-      recipientWallet={recipientWallet}
-      onClose={closeModal}
-      onSuccess={handleSuccess}
-    />
+    React.createElement(Modal, {
+      creatorName,
+      recipientWallet,
+      onClose: closeModal,
+      onSuccess: handleSuccess,
+    })
   );
 }
 

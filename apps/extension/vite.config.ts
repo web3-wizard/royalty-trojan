@@ -3,6 +3,11 @@ import { resolve } from 'path';
 
 export default {
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@shared-types': resolve(__dirname, '../../packages/shared-types'),
+    },
+  },
   build: {
     outDir: 'dist',
     rollupOptions: {

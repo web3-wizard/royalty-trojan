@@ -1,4 +1,4 @@
-import type { CreatorIdentity, PlatformAdapter } from '@shared-types/creator';
+import type { CreatorIdentity, PlatformAdapter } from '../../../../packages/shared-types/creator';
 
 export class YouTubeAdapter implements PlatformAdapter {
   match(url: string): boolean {
