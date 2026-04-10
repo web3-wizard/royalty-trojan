@@ -6,6 +6,24 @@ interface Tier {
   description: string;
 }
 
+interface WalletStatusResponse {
+  connected: boolean;
+  publicKey: string | null;
+  ready?: boolean;
+  success?: boolean;
+  error?: string;
+  signature?: string;
+}
+
+declare const chrome: {
+  runtime: {
+    sendMessage(
+      message: { type: string; payload?: unknown },
+      callback: (response: WalletStatusResponse) => void
+    ): void;
+  };
+};
+
 const TIERS: Tier[] = [
   { name: 'Tip Jar', amount: 5, description: 'One-time $5 tip (streamed over 1 day)' },
   { name: 'Supporter', amount: 10, description: 'Monthly $10 support' },
@@ -28,7 +46,7 @@ export const Modal: React.FC<ModalProps> = ({ creatorName, recipientWallet, onCl
 
   useEffect(() => {
     // Check current wallet status from background
-    chrome.runtime.sendMessage({ type: 'GET_WALLET_STATUS' }, (response) => {
+    chrome.runtime.sendMessage({ type: 'GET_WALLET_STATUS' }, (response: WalletStatusResponse) => {
       setWalletConnected(response.connected);
       setPublicKey(response.publicKey);
     });
@@ -37,7 +55,7 @@ export const Modal: React.FC<ModalProps> = ({ creatorName, recipientWallet, onCl
   const handleConnectWallet = async () => {
     setError(null);
     setLoading(true);
-    chrome.runtime.sendMessage({ type: 'CONNECT_WALLET' }, (response) => {
+    chrome.runtime.sendMessage({ type: 'CONNECT_WALLET' }, (response: WalletStatusResponse) => {
       setLoading(false);
       if (response.success) {
         setWalletConnected(true);
@@ -61,9 +79,9 @@ export const Modal: React.FC<ModalProps> = ({ creatorName, recipientWallet, onCl
           tier: selectedTier,
         },
       },
-      (response) => {
+      (response: WalletStatusResponse) => {
         setLoading(false);
-        if (response.success) {
+        if (response.success && response.signature) {
           onSuccess(response.signature, selectedTier);
         } else {
           setError(response.error || 'Stream creation failed');
