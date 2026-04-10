@@ -1,13 +1,13 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
-import dotenv from 'dotenv';
+import dotenvFlow from 'dotenv-flow';
 import resolveRoute from './routes/resolve.js';
 import revenueRoute from './routes/revenue.js';
 import streamsRoute from './routes/streams.js';
 import { initRedis } from './services/cache.js';
 
-dotenv.config();
+dotenvFlow.config();
 
 async function main() {
 	const fastify = Fastify({ logger: true });
