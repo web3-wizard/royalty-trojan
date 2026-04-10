@@ -3,6 +3,7 @@ interface CreatorIdentity {
   identifier: string;
   displayName: string;
   url: string;
+  badgeTarget?: HTMLElement | null;
 }
 
 interface PlatformAdapter {
@@ -23,12 +24,14 @@ export class TwitchAdapter implements PlatformAdapter {
     if (!channelName || channelName === 'directory' || channelName === 'downloads') return null;
 
     const displayName = document.querySelector('.channel-info-content h1')?.textContent?.trim();
+    const badgeTarget = document.querySelector('.channel-info-content h1')?.parentElement as HTMLElement;
 
     return {
       platform: 'twitch',
       identifier: channelName,
       displayName: displayName || channelName,
       url: location.href,
+      badgeTarget,
     };
   }
 

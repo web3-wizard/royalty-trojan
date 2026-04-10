@@ -3,6 +3,7 @@ interface CreatorIdentity {
   identifier: string;
   displayName?: string;
   url: string;
+  badgeTarget?: HTMLElement | null;
 }
 
 interface PlatformAdapter {
@@ -24,12 +25,14 @@ export class XAdapter implements PlatformAdapter {
     if (!handle) return null;
 
     const displayName = document.querySelector('[data-testid="UserName"]')?.textContent?.trim();
+    const badgeTarget = document.querySelector('[data-testid="UserName"]')?.parentElement as HTMLElement;
 
     return {
       platform: 'x',
       identifier: handle,
       displayName: displayName || undefined,
       url: location.href,
+      badgeTarget,
     };
   }
 
