@@ -1,19 +1,7 @@
 import { YouTubeAdapter } from './youtube';
 import { XAdapter } from './x';
 import { TwitchAdapter } from './twitch';
-
-interface CreatorIdentity {
-  platform: string;
-  handle: string;
-  wallet?: string;
-  domain?: string;
-}
-
-interface PlatformAdapter {
-  match(url: string): boolean;
-  extractCreator(): CreatorIdentity;
-  findSubscribeButtons(): HTMLElement[];
-}
+import type { CreatorIdentity, PlatformAdapter } from '@shared-types/creator';
 
 const adapters: PlatformAdapter[] = [
   new YouTubeAdapter(),
