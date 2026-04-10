@@ -1,7 +1,7 @@
 type MessageSender = unknown;
 type MessageResponse = { success: boolean };
 
-declare const chrome: {
+const chrome = globalThis as typeof globalThis & {
   runtime: {
     onInstalled: {
       addListener(listener: () => void): void;
