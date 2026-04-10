@@ -14,11 +14,25 @@ export class YouTubeAdapter implements PlatformAdapter {
 
     if (!channelId) return null;
 
+    // Find channel header container for badge
+    let badgeTarget: HTMLElement | null = null;
+    if (location.pathname.startsWith('/@') || location.pathname.startsWith('/channel/') || location.pathname.startsWith('/c/')) {
+      // Channel page: target the channel name area
+      badgeTarget = document.querySelector('#channel-header #channel-name yt-formatted-string')?.parentElement as HTMLElement;
+      if (!badgeTarget) {
+        badgeTarget = document.querySelector('#owner #channel-name') as HTMLElement;
+      }
+    } else {
+      // Video page: target the owner section under video
+      badgeTarget = document.querySelector('#owner #channel-name') as HTMLElement;
+    }
+
     return {
       platform: 'youtube',
       identifier: channelId,
       displayName: channelName || undefined,
       url: location.href,
+      badgeTarget,
     };
   }
 
