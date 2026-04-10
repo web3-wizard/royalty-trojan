@@ -1,4 +1,15 @@
-import type { CreatorIdentity, PlatformAdapter } from '@shared-types/creator';
+interface CreatorIdentity {
+  platform: string;
+  identifier: string;
+  displayName?: string;
+  url: string;
+}
+
+interface PlatformAdapter {
+  match(url: string): boolean;
+  extractCreator(): CreatorIdentity | null;
+  findSubscribeButtons(): HTMLElement[];
+}
 
 export class XAdapter implements PlatformAdapter {
   match(url: string): boolean {
