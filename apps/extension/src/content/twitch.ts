@@ -9,12 +9,29 @@ interface CreatorIdentity {
 interface PlatformAdapter {
   match(url: string): boolean;
   extractCreator(): CreatorIdentity | null;
+  extractDomain?(): Promise<string | null>;
   findSubscribeButtons(): HTMLElement[];
 }
 
 export class TwitchAdapter implements PlatformAdapter {
   match(url: string): boolean {
     return url.includes('twitch.tv');
+  }
+
+  async extractDomain(): Promise<string | null> {
+    // Look for website link in channel panels.
+    const panels = document.querySelectorAll('.channel-panels-container a');
+    for (const panel of panels) {
+      const href = panel.getAttribute('href');
+      if (href && href.startsWith('http') && !href.includes('twitch.tv')) {
+        try {
+          return new URL(href).hostname.replace(/^www\./, '');
+        } catch {
+          // Ignore malformed links and continue.
+        }
+      }
+    }
+    return null;
   }
 
   extractCreator(): CreatorIdentity | null {
