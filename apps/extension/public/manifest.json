@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Royalty Trojan",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Direct on-chain subscriptions for creators",
   "permissions": ["storage", "activeTab"],
   "host_permissions": [
@@ -29,5 +29,14 @@
       "resources": ["assets/*"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "action": {
+    "default_title": "Royalty Trojan - Open Settings"
+  },
+  "options_page": "settings.html",
+  "icons": {
+    "16": "assets/icon-16.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  }
 }

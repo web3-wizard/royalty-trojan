@@ -1,6 +1,23 @@
 import { storage } from '../utils/storage.js';
 
-const IDENTITY_SERVICE_BASE_URL = 'http://localhost:3001';
+// Get service URL from chrome.runtime storage or default to localhost
+// This will be set during extension installation with the actual deployed URL
+const getServiceUrl = async (): Promise<string> => {
+	return new Promise((resolve) => {
+		chrome.storage.sync.get('IDENTITY_SERVICE_URL', (result) => {
+			resolve(result.IDENTITY_SERVICE_URL || 'http://localhost:3001');
+		});
+	});
+};
+
+let cachedServiceUrl: string | null = null;
+
+async function getIdentityServiceUrl(): Promise<string> {
+	if (cachedServiceUrl) return cachedServiceUrl;
+	cachedServiceUrl = await getServiceUrl();
+	return cachedServiceUrl;
+}
+
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 300;
 const WALLET_CACHE_TTL_SECONDS = 3600;
@@ -20,7 +37,8 @@ export async function resolveCreatorWallet(domain?: string, handle?: string): Pr
 	const cachedWallet = await storage.get<string>(cacheKey);
 	if (cachedWallet) return cachedWallet;
 
-	const url = new URL('/resolve', IDENTITY_SERVICE_BASE_URL);
+	const baseUrl = await getIdentityServiceUrl();
+	const url = new URL('/resolve', baseUrl);
 	if (domain) {
 		url.searchParams.set('domain', domain);
 	}
