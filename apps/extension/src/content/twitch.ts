@@ -1,17 +1,4 @@
-interface CreatorIdentity {
-  platform: string;
-  identifier: string;
-  displayName: string;
-  url: string;
-  badgeTarget?: HTMLElement | null;
-}
-
-interface PlatformAdapter {
-  match(url: string): boolean;
-  extractCreator(): CreatorIdentity | null;
-  extractDomain?(): Promise<string | null>;
-  findSubscribeButtons(): HTMLElement[];
-}
+import type { CreatorIdentity, PlatformAdapter } from '../../../../packages/shared-types/creator';
 
 export class TwitchAdapter implements PlatformAdapter {
   match(url: string): boolean {
