@@ -22,6 +22,10 @@ async function main() {
 	await initRedis();
 
 	// Routes
+	fastify.get('/', async () => ({
+		service: 'royalty-trojan-identity-service',
+		status: 'ok',
+	}));
 	fastify.get('/health', async () => ({ status: 'ok' }));
 	fastify.register(resolveRoute, { prefix: '/resolve' });
 	fastify.register(revenueRoute, { prefix: '/revenue' });
