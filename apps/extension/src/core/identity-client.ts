@@ -5,7 +5,7 @@ import { storage } from '../utils/storage.js';
 const getServiceUrl = async (): Promise<string> => {
 	return new Promise((resolve) => {
 		chrome.storage.sync.get('IDENTITY_SERVICE_URL', (result) => {
-			resolve(result.IDENTITY_SERVICE_URL || 'http://localhost:3001');
+			resolve(result.IDENTITY_SERVICE_URL || 'https://royalty-trojan-4.onrender.com');
 		});
 	});
 };
