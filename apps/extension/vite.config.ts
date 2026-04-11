@@ -1,32 +1,51 @@
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+import { defineConfig } from 'vite';
 
-export default {
+const shared = {
   plugins: [react()],
   resolve: {
     alias: {
       '@shared-types': resolve(__dirname, '../../packages/shared-types'),
     },
   },
-  build: {
-    outDir: 'dist',
-    minify: true,
-    target: 'ES2020',
-    rollupOptions: {
-      input: {
-        content: resolve(__dirname, 'src/content/index.tsx'),
-        background: resolve(__dirname, 'src/background/service-worker.ts'),
-      },
-      output: [
-        {
-          entryFileNames: '[name].js',
-          chunkFileNames: 'chunks/[name].[hash].js',
-          assetFileNames: 'assets/[name].[ext]',
+};
+
+export default defineConfig([
+  {
+    ...shared,
+    build: {
+      outDir: 'dist',
+      emptyOutDir: true,
+      minify: true,
+      target: 'ES2020',
+      rollupOptions: {
+        input: resolve(__dirname, 'src/content/index.tsx'),
+        output: {
           format: 'iife',
-          manualChunks: undefined,
+          entryFileNames: 'content.js',
+          assetFileNames: 'assets/[name].[ext]',
+          inlineDynamicImports: true,
         },
-      ],
-      preserveModules: false,
+      },
     },
   },
-};
+  {
+    ...shared,
+    build: {
+      outDir: 'dist',
+      emptyOutDir: false,
+      minify: true,
+      target: 'ES2020',
+      rollupOptions: {
+        input: resolve(__dirname, 'src/background/service-worker.ts'),
+        output: {
+          format: 'iife',
+          entryFileNames: 'background.js',
+          assetFileNames: 'assets/[name].[ext]',
+          inlineDynamicImports: true,
+        },
+      },
+    },
+  },
+]);
