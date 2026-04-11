@@ -10,18 +10,23 @@ export default {
   },
   build: {
     outDir: 'dist',
+    minify: true,
+    target: 'ES2020',
     rollupOptions: {
       input: {
         content: resolve(__dirname, 'src/content/index.tsx'),
         background: resolve(__dirname, 'src/background/service-worker.ts'),
       },
-      output: {
-        entryFileNames: '[name].js',
-        chunkFileNames: 'chunks/[name].[hash].js',
-        assetFileNames: 'assets/[name].[ext]',
-        format: 'iife',
-        name: 'royaltyTrojan',
-      },
+      output: [
+        {
+          entryFileNames: '[name].js',
+          chunkFileNames: 'chunks/[name].[hash].js',
+          assetFileNames: 'assets/[name].[ext]',
+          format: 'iife',
+          manualChunks: undefined,
+        },
+      ],
+      preserveModules: false,
     },
   },
 };
