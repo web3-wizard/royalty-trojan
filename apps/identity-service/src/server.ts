@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import dotenvFlow from 'dotenv-flow';
@@ -15,7 +15,7 @@ async function main() {
 	await fastify.register(rateLimit, {
 		max: Number(process.env.RATE_LIMIT_MAX) || 100,
 		timeWindow: process.env.RATE_LIMIT_WINDOW || '1 minute',
-		allowList: (request) => request.url === '/health',
+		allowList: (request: FastifyRequest) => request.url === '/health',
 	});
 
 	// Initialize Redis
