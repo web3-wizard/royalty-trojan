@@ -1,6 +1,6 @@
-import { Redis } from 'ioredis';
+import Redis from 'ioredis';
 
-let redis: Redis | null = null;
+let redis: any = null;
 
 export async function initRedis() {
   redis = new Redis(process.env.REDIS_URL!);
