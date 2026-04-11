@@ -3,6 +3,7 @@ import { showToast } from './notifications';
 import { YouTubeAdapter } from './youtube';
 import { XAdapter } from './x';
 import { TwitchAdapter } from './twitch';
+import type { ReactElement } from 'react';
 import type { CreatorIdentity, PlatformAdapter } from '../../../../packages/shared-types/creator';
 
 const adapters: PlatformAdapter[] = [
@@ -21,7 +22,7 @@ let ModalComponent: ((props: {
   recipientWallet: string;
   onClose: () => void;
   onSuccess: (signature: string, tier: unknown) => void;
-}) => JSX.Element) | null = null;
+}) => ReactElement) | null = null;
 let injectBadgeFn: ((
   container: HTMLElement,
   props: { creatorWallet: string; creatorName: string; platform: string }
@@ -198,7 +199,8 @@ function attachInterceptor(button: HTMLElement) {
         return;
       }
 
-      await showModal(creator.displayName || creator.identifier, wallet);
+      const recipientWallet = wallet;
+      await showModal(creator.displayName || creator.identifier, recipientWallet);
     },
     true
   );
