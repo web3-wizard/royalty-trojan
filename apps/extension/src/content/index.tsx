@@ -182,7 +182,7 @@ function attachInterceptor(button: HTMLElement) {
       try {
         if (!wallet) {
           const domain = await extractDomainFromCreator();
-          wallet = await resolveCreatorWallet(domain || undefined, creator.identifier);
+          wallet = await resolveCreatorWallet(domain ?? undefined, creator.identifier);
           if (wallet) {
             creatorWithWallet.wallet = wallet;
             await injectCreatorBadge(creator, wallet);
