@@ -1,0 +1,49 @@
+Royalty Trojan Store Listing Draft
+
+Product Name
+Royalty Trojan
+
+Short Description (Chrome <=132 chars)
+Enable direct on-chain creator subscriptions on YouTube, X, and Twitch using your Solana wallet.
+
+Full Description
+Royalty Trojan adds creator support capabilities directly into major social platforms.
+
+What it does
+- Detects creators on YouTube, X, and Twitch
+- Resolves creator wallet information via your configured identity service
+- Adds a support modal with tier selection
+- Shows creator support badges and revenue snapshots
+- Uses Phantom wallet for user-approved Solana transactions
+
+Key features
+- Cross-platform creator detection
+- Wallet resolution with DNS and fallback support
+- Local caching for fast repeat lookups
+- Error toasts and wallet-install guidance
+- Configurable identity-service endpoint in extension settings
+
+Permissions rationale
+- storage: save settings and local cache
+- activeTab: interact with supported creator pages
+- host permissions for youtube.com, x.com, twitch.tv: inject UI and read publicly visible creator metadata
+
+Privacy summary
+- No seed phrases, private keys, or passwords are collected
+- No sale of personal data
+- Uses local extension storage for settings and cache
+- See privacy policy URL in listing
+
+Support URL
+https://github.com/web3-wizard/royalty-trojan
+
+Privacy Policy URL
+(Host apps/extension/public/privacy-policy.html and use its public URL, for example GitHub Pages)
+
+Category suggestions
+- Productivity
+- Social
+
+Firefox Add-ons Notes
+- Use same description with AMO character limits
+- Provide explicit data use disclosures matching privacy policy

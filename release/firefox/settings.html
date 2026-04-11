@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Royalty Trojan Settings</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      color: #333;
+      margin: 0;
+    }
+
+    .logo {
+      font-size: 32px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #667eea;
+      margin-bottom: 16px;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 12px;
+      font-size: 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      transition: border-color 0.3s;
+      font-family: "Courier New", monospace;
+    }
+
+    input[type="text"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .input-hint {
+      font-size: 12px;
+      color: #888;
+      margin-top: 6px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      display: none;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border-left: 4px solid #28a745;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border-left: 4px solid #dc3545;
+    }
+
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border-left: 4px solid #17a2b8;
+    }
+
+    .info-box {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .info-box strong {
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="logo">💰</span>
+      <h1>Royalty Trojan</h1>
+    </div>
+
+    <div class="info-box">
+      <strong>Welcome!</strong> Configure your Royalty Trojan extension settings below. Changes are saved automatically to your Chrome account.
+    </div>
+
+    <!-- Service Configuration Section -->
+    <div class="section">
+      <div class="section-title">🔗 Service Configuration</div>
+
+      <div class="form-group">
+        <label for="serviceUrl">Identity Service URL</label>
+        <input
+          type="text"
+          id="serviceUrl"
+          placeholder="https://royalty-trojan-identity.onrender.com"
+          value="https://royalty-trojan-4.onrender.com"
+        />
+        <div class="input-hint">
+          Enter the URL of your deployed Identity Service (with http:// or https://)
+        </div>
+      </div>
+    </div>
+
+    <!-- Cache Configuration Section -->
+    <div class="section">
+      <div class="section-title">⚡ Performance</div>
+
+      <div class="form-group">
+        <label for="cacheExpiry">Wallet Cache TTL (seconds)</label>
+        <input
+          type="text"
+          id="cacheExpiry"
+          placeholder="3600"
+          value="3600"
+        />
+        <div class="input-hint">
+          How long to cache resolved wallet addresses (default: 1 hour = 3600 seconds)
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="maxRetries">Max Resolution Retries</label>
+        <input
+          type="text"
+          id="maxRetries"
+          placeholder="3"
+          value="3"
+        />
+        <div class="input-hint">
+          Number of retry attempts for failed wallet resolutions
+        </div>
+      </div>
+    </div>
+
+    <!-- About Section -->
+    <div class="section">
+      <div class="section-title">ℹ️ About</div>
+      <div class="info-box">
+        <strong>Version:</strong> 1.0.0<br />
+        <strong>Creator Platform Support:</strong> YouTube, X (Twitter), Twitch<br />
+        <strong>Wallet Support:</strong> Phantom (Solana)<br />
+        <br />
+        For issues or questions, visit the <a href="https://github.com/your-repo/royalty-trojan" target="_blank">GitHub repository</a>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="button-group">
+      <button class="btn-primary" id="saveBtn">Save Settings</button>
+      <button class="btn-secondary" id="resetBtn">Reset to Defaults</button>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    // DOM Elements
+    const serviceUrlInput = document.getElementById('serviceUrl');
+    const cacheExpiryInput = document.getElementById('cacheExpiry');
+    const maxRetriesInput = document.getElementById('maxRetries');
+    const saveBtn = document.getElementById('saveBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const statusDiv = document.getElementById('status');
+
+    // Constants
+    const DEFAULTS = {
+      IDENTITY_SERVICE_URL: 'http://localhost:3001',
+      CACHE_EXPIRY: '3600',
+      MAX_RETRIES: '3',
+    };
+
+    // Load settings on page load
+    function loadSettings() {
+      chrome.storage.sync.get(
+        ['IDENTITY_SERVICE_URL', 'CACHE_EXPIRY', 'MAX_RETRIES'],
+        (result) => {
+          serviceUrlInput.value = result.IDENTITY_SERVICE_URL || DEFAULTS.IDENTITY_SERVICE_URL;
+          cacheExpiryInput.value = result.CACHE_EXPIRY || DEFAULTS.CACHE_EXPIRY;
+          maxRetriesInput.value = result.MAX_RETRIES || DEFAULTS.MAX_RETRIES;
+        }
+      );
+    }
+
+    // Show status message
+    function showStatus(message, type) {
+      statusDiv.textContent = message;
+      statusDiv.className = `status show ${type}`;
+      if (type === 'success') {
+        setTimeout(() => {
+          statusDiv.classList.remove('show');
+        }, 3000);
+      }
+    }
+
+    // Validate URL
+    function isValidUrl(url) {
+      try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    }
+
+    // Validate number
+    function isValidNumber(value) {
+      const num = parseInt(value, 10);
+      return !isNaN(num) && num > 0;
+    }
+
+    // Save settings
+    saveBtn.addEventListener('click', () => {
+      // Validate inputs
+      const serviceUrl = serviceUrlInput.value.trim();
+      const cacheExpiry = cacheExpiryInput.value.trim();
+      const maxRetries = maxRetriesInput.value.trim();
+
+      if (!serviceUrl) {
+        showStatus('❌ Service URL is required', 'error');
+        return;
+      }
+
+      if (!isValidUrl(serviceUrl)) {
+        showStatus('❌ Service URL must start with http:// or https://', 'error');
+        return;
+      }
+
+      if (!isValidNumber(cacheExpiry)) {
+        showStatus('❌ Cache TTL must be a positive number', 'error');
+        return;
+      }
+
+      if (!isValidNumber(maxRetries)) {
+        showStatus('❌ Max retries must be a positive number', 'error');
+        return;
+      }
+
+      // Save to Chrome storage
+      chrome.storage.sync.set(
+        {
+          IDENTITY_SERVICE_URL: serviceUrl,
+          CACHE_EXPIRY: cacheExpiry,
+          MAX_RETRIES: maxRetries,
+        },
+        () => {
+          showStatus('✅ Settings saved successfully!', 'success');
+        }
+      );
+    });
+
+    // Reset to defaults
+    resetBtn.addEventListener('click', () => {
+      if (confirm('Are you sure you want to reset all settings to defaults?')) {
+        chrome.storage.sync.clear(() => {
+          serviceUrlInput.value = DEFAULTS.IDENTITY_SERVICE_URL;
+          cacheExpiryInput.value = DEFAULTS.CACHE_EXPIRY;
+          maxRetriesInput.value = DEFAULTS.MAX_RETRIES;
+          showStatus('✅ Settings reset to defaults', 'info');
+        });
+      }
+    });
+
+    // Allow saving with Ctrl+Enter
+    [serviceUrlInput, cacheExpiryInput, maxRetriesInput].forEach((input) => {
+      input.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+          saveBtn.click();
+        }
+      });
+    });
+
+    // Load settings on page load
+    loadSettings();
+  </script>
+</body>
+</html>

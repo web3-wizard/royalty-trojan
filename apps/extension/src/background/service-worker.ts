@@ -24,7 +24,7 @@ type MessagePayload = {
   };
 };
 
-const chrome = globalThis as typeof globalThis & {
+declare const chrome: {
   runtime: {
     onInstalled: {
       addListener(listener: () => void): void;
