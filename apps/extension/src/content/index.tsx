@@ -177,7 +177,7 @@ function attachInterceptor(button: HTMLElement) {
       }
 
       const creatorWithWallet = creator as CreatorWithWallet;
-      let wallet = creatorWithWallet.wallet;
+      let wallet: string | null | undefined = creatorWithWallet.wallet;
 
       try {
         if (!wallet) {
