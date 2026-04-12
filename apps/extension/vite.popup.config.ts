@@ -13,7 +13,7 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: false,
     minify: true,
-    target: 'ES2020',
+    target: 'chrome114',
     rollupOptions: {
       input: resolve(__dirname, 'src/popup/index.tsx'),
       output: {
