@@ -52,14 +52,20 @@ const bagsClient = new BagsClient();
 
 async function updateBadge(): Promise<void> {
   try {
-    const sender = wallet.publicKey ?? undefined;
-    const streams = await bagsClient.listAllActiveStreams({ sender });
+    if (!wallet.connected || !wallet.publicKey) {
+      chrome.action.setBadgeText({ text: 'x' });
+      chrome.action.setBadgeBackgroundColor({ color: '#6b7280' });
+      return;
+    }
+
+    const streams = await bagsClient.listAllActiveStreams({ sender: wallet.publicKey });
     const count = streams.length;
     chrome.action.setBadgeText({ text: count > 0 ? count.toString() : '' });
     chrome.action.setBadgeBackgroundColor({ color: '#7c3aed' });
   } catch (error) {
     console.error('Failed to update stream badge:', error);
-    chrome.action.setBadgeText({ text: '' });
+    chrome.action.setBadgeText({ text: '!' });
+    chrome.action.setBadgeBackgroundColor({ color: '#c13f36' });
   }
 }
 
