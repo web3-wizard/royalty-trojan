@@ -21,6 +21,8 @@ type MessagePayload = {
     amount?: number;
     tier?: string;
     streamId?: string;
+    sender?: string;
+    receiver?: string;
   };
 };
 
@@ -109,6 +111,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             publicKey: wallet.publicKey,
             ready: wallet.ready,
           });
+          break;
+        }
+
+        case 'GET_ALL_STREAMS': {
+          try {
+            const { sender, receiver } = message.payload ?? {};
+            const streams = await bagsClient.listStreams({ sender, receiver });
+            sendResponse({ success: true, streams });
+          } catch (error) {
+            sendError(sendResponse, 'GET_ALL_STREAMS_FAILED', error, 'Failed to fetch streams');
+          }
           break;
         }
 

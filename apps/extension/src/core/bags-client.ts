@@ -22,6 +22,10 @@ type StreamService = {
   cancelStream(streamId: string, signer: StreamSigner): Promise<string>;
 };
 
+type StreamListResponse = {
+  streams?: any[];
+};
+
 export class BagsClient {
   private readonly bags: BagsSDK;
   private readonly connection: Connection;
@@ -90,5 +94,22 @@ export class BagsClient {
     const streamService = this.getStreamService();
 
     return streamService.cancelStream(streamId, signer);
+  }
+
+  async listStreams(filter: { sender?: string; receiver?: string }): Promise<any[]> {
+    const searchParams = new URLSearchParams();
+
+    if (filter.sender) {
+      searchParams.set('sender', filter.sender);
+    }
+
+    if (filter.receiver) {
+      searchParams.set('receiver', filter.receiver);
+    }
+
+    const response = await fetch(`https://api.bags.foundation/streams?${searchParams}`);
+    const data = (await response.json()) as StreamListResponse;
+
+    return data.streams || [];
   }
 }
