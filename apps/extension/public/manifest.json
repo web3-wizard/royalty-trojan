@@ -39,5 +39,6 @@
       "suggested_key": { "default": "Ctrl+Shift+P" },
       "description": "Pause/Resume all Bags streams"
     }
-  }
+  },
+  "options_page": "settings.html"
 }

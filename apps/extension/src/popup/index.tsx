@@ -37,6 +37,15 @@ type MessageResponse = {
 
 type ChromeTab = { id?: number };
 
+declare global {
+  interface Window {
+    solana?: {
+      isPhantom?: boolean;
+      connect(): Promise<{ publicKey: { toString(): string } }>;
+    };
+  }
+}
+
 const DEFAULT_TIERS: Tier[] = [
   { name: 'Tip Jar', amount: 5 },
   { name: 'Supporter', amount: 10 },
@@ -84,6 +93,7 @@ const Popup: React.FC = () => {
   const [currentPageCreator, setCurrentPageCreator] = useState<CreatorInfo | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tiers, setTiers] = useState<Tier[]>(DEFAULT_TIERS);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     storage.local.get('customTiers', (result) => {
@@ -117,15 +127,37 @@ const Popup: React.FC = () => {
   }, []);
 
   const connectWallet = () => {
+    setActionError(null);
+
     runtime.sendMessage({ type: 'CONNECT_WALLET' }, (response: MessageResponse) => {
-      setWallet({
-        connected: Boolean(response.success),
-        publicKey: response.publicKey ?? null,
-      });
+      if (response.success) {
+        setWallet({
+          connected: true,
+          publicKey: response.publicKey ?? null,
+        });
+        return;
+      }
+
+      const tryPopupPhantom = async () => {
+        if (!window.solana?.isPhantom) {
+          setActionError('Unable to connect wallet. Ensure Phantom is installed and unlocked.');
+          return;
+        }
+
+        try {
+          const result = await window.solana.connect();
+          setWallet({ connected: true, publicKey: result.publicKey.toString() });
+        } catch {
+          setActionError('Wallet connection was rejected.');
+        }
+      };
+
+      void tryPopupPhantom();
     });
   };
 
   const handleQuickTip = () => {
+    setActionError(null);
     if (!currentPageCreator || tiers.length === 0) return;
 
     runtime.sendMessage({
@@ -134,7 +166,26 @@ const Popup: React.FC = () => {
         recipient: currentPageCreator.wallet,
         amount: tiers[0].amount,
       },
+    }, (response?: MessageResponse) => {
+      if (response?.success === false) {
+        setActionError(response.error || 'Quick tip failed.');
+      }
     });
+  };
+
+  const openOptions = () => {
+    setActionError(null);
+
+    if (runtime.openOptionsPage) {
+      runtime.openOptionsPage();
+      return;
+    }
+
+    try {
+      window.open('settings.html', '_blank');
+    } catch {
+      setActionError('Could not open options page.');
+    }
   };
 
   return (
@@ -170,10 +221,12 @@ const Popup: React.FC = () => {
         <button className="secondary-action" onClick={() => setSettingsOpen((open) => !open)}>
           ⚙️ Settings
         </button>
-        <button className="secondary-action" onClick={() => runtime.openOptionsPage?.()}>
+        <button className="secondary-action" onClick={openOptions}>
           Open Options
         </button>
       </div>
+
+      {actionError && <div className="tip-feedback">{actionError}</div>}
 
       {settingsOpen && (
         <div className="settings-slide-down">
