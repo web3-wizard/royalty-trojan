@@ -96,7 +96,7 @@ export class BagsClient {
     return streamService.cancelStream(streamId, signer);
   }
 
-  async listStreams(filter: { sender?: string; receiver?: string }): Promise<any[]> {
+  async listStreams(filter: { sender?: string; receiver?: string; status?: string }): Promise<any[]> {
     const searchParams = new URLSearchParams();
 
     if (filter.sender) {
@@ -105,6 +105,10 @@ export class BagsClient {
 
     if (filter.receiver) {
       searchParams.set('receiver', filter.receiver);
+    }
+
+    if (filter.status) {
+      searchParams.set('status', filter.status);
     }
 
     const response = await fetch(`https://api.bags.foundation/streams?${searchParams}`);

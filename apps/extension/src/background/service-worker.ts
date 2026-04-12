@@ -76,6 +76,7 @@ declare const chrome: {
 
 let wallet: WalletAdapter = new PhantomWalletAdapter();
 const bagsClient = new BagsClient();
+const bags = bagsClient;
 const solanaConnection = new Connection(clusterApiUrl('mainnet-beta'));
 const STREAM_CACHE_TTL_MS = 5 * 60 * 1000;
 const BADGE_CHECK_ALARM = 'rt-low-balance-check';
@@ -196,7 +197,7 @@ async function updateBadge(): Promise<void> {
       return;
     }
 
-    const streams = await bagsClient.listAllActiveStreams({ sender: wallet.publicKey });
+    const streams = await bags.listStreams({ sender: wallet.publicKey, status: 'active' });
     const count = streams.length;
     chrome.action.setBadgeText({ text: count > 0 ? count.toString() : '' });
     chrome.action.setBadgeBackgroundColor({ color: '#7c3aed' });
@@ -254,6 +255,12 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void sender;
+
+  if (message.type === 'STREAM_CREATED' || message.type === 'STREAM_CANCELLED') {
+    void updateBadge();
+    sendResponse({ success: true });
+    return true;
+  }
 
   (async () => {
     try {
