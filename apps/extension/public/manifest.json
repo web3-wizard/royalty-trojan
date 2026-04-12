@@ -38,5 +38,11 @@
       "resources": ["assets/*"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "commands": {
+    "toggle-pause-all": {
+      "suggested_key": { "default": "Ctrl+Shift+P" },
+      "description": "Pause/Resume all Bags streams"
+    }
+  }
 }
