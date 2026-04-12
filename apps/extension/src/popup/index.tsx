@@ -239,7 +239,24 @@ const Popup: React.FC = () => {
               const tabErr = chromeGlobal.chrome.runtime.lastError;
               if (tabErr) {
                 void tabErr.message;
-                setActionError('Could not reach page wallet. Refresh the tab and try again.');
+                runtime.sendMessage(
+                  { type: 'CONNECT_WALLET_IN_TAB', payload: { tabId } },
+                  (fallbackResponse?: MessageResponse) => {
+                    const fallbackErr = chromeGlobal.chrome.runtime.lastError;
+                    if (fallbackErr) {
+                      void fallbackErr.message;
+                      setActionError('Could not reach page wallet. Refresh the tab and try again.');
+                      return;
+                    }
+
+                    if (fallbackResponse?.success && fallbackResponse.publicKey) {
+                      setWallet({ connected: true, publicKey: fallbackResponse.publicKey });
+                      return;
+                    }
+
+                    setActionError(fallbackResponse?.error || 'Could not reach page wallet. Refresh the tab and try again.');
+                  }
+                );
                 return;
               }
 

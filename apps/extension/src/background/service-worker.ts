@@ -24,10 +24,13 @@ type MessagePayload = {
     streamId?: string;
     sender?: string;
     receiver?: string;
+    domain?: string;
+    handle?: string;
     creatorWallet?: string;
     creatorName?: string;
     platform?: string;
     isLive?: boolean;
+    tabId?: number;
   };
 };
 
@@ -54,6 +57,12 @@ declare const chrome: {
         priority?: number;
       }
     ): void;
+  };
+  scripting: {
+    executeScript(details: {
+      target: { tabId: number };
+      func: () => Promise<{ success: boolean; publicKey?: string; error?: string }>;
+    }): Promise<Array<{ result?: { success: boolean; publicKey?: string; error?: string } }>>;
   };
   runtime: {
     onInstalled: {
@@ -333,6 +342,54 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ success: true, wallet });
           } catch (error) {
             sendError(sendResponse, 'RESOLVE_CREATOR_WALLET_FAILED', error, 'Failed to resolve creator wallet');
+          }
+          break;
+        }
+
+        case 'CONNECT_WALLET_IN_TAB': {
+          try {
+            const { tabId } = message.payload ?? {};
+            if (typeof tabId !== 'number') {
+              sendError(sendResponse, 'INVALID_CONNECT_WALLET_IN_TAB_PAYLOAD', null, 'Missing tabId');
+              break;
+            }
+
+            const [injection] = await chrome.scripting.executeScript({
+              target: { tabId },
+              func: async () => {
+                const page = window as typeof window & {
+                  solana?: {
+                    isPhantom?: boolean;
+                    connect(): Promise<{ publicKey: { toString(): string } }>;
+                  };
+                };
+
+                if (!page.solana?.isPhantom) {
+                  return { success: false, error: 'Phantom is not available on this page.' };
+                }
+
+                try {
+                  const result = await page.solana.connect();
+                  return { success: true, publicKey: result.publicKey.toString() };
+                } catch {
+                  return { success: false, error: 'Wallet connection was rejected.' };
+                }
+              },
+            });
+
+            const result = injection?.result;
+            if (result?.success && result.publicKey) {
+              sendResponse({ success: true, publicKey: result.publicKey });
+            } else {
+              sendError(
+                sendResponse,
+                'CONNECT_WALLET_IN_TAB_REJECTED',
+                null,
+                result?.error || 'Could not connect wallet in active tab.'
+              );
+            }
+          } catch (error) {
+            sendError(sendResponse, 'CONNECT_WALLET_IN_TAB_FAILED', error, 'Failed to connect wallet in active tab');
           }
           break;
         }

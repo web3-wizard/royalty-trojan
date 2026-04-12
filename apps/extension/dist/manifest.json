@@ -3,7 +3,7 @@
   "name": "Royalty Trojan",
   "version": "0.1.0",
   "description": "Direct on-chain subscriptions for creators",
-  "permissions": ["storage", "activeTab", "notifications", "alarms"],
+  "permissions": ["storage", "activeTab", "notifications", "alarms", "scripting"],
   "host_permissions": [
     "https://*.youtube.com/*",
     "https://*.x.com/*",
