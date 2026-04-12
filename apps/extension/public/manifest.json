@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Royalty Trojan",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "description": "Direct on-chain subscriptions for creators",
   "permissions": ["storage", "activeTab"],
   "host_permissions": [
@@ -9,8 +9,17 @@
     "https://*.x.com/*",
     "https://*.twitch.tv/*"
   ],
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "Royalty Trojan",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    }
+  },
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "src/background/service-worker.ts",
     "type": "module"
   },
   "content_scripts": [
@@ -20,7 +29,7 @@
         "https://*.x.com/*",
         "https://*.twitch.tv/*"
       ],
-      "js": ["content.js"],
+      "js": ["src/content/index.ts"],
       "run_at": "document_idle"
     }
   ],
@@ -29,9 +38,5 @@
       "resources": ["assets/*"],
       "matches": ["<all_urls>"]
     }
-  ],
-  "action": {
-    "default_title": "Royalty Trojan - Open Settings"
-  },
-  "options_page": "settings.html"
+  ]
 }
