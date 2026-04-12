@@ -1,10 +1,27 @@
 import { storage } from '../utils/storage.js';
 
+type IdentityConfigResult = {
+	IDENTITY_SERVICE_URL?: string;
+};
+
+const chromeStorageSync = (globalThis as typeof globalThis & {
+	chrome: {
+		storage: {
+			sync: {
+				get(
+					key: string,
+					callback: (result: IdentityConfigResult) => void
+				): void;
+			};
+		};
+	};
+}).chrome.storage.sync;
+
 // Get service URL from chrome.runtime storage or default to localhost
 // This will be set during extension installation with the actual deployed URL
 const getServiceUrl = async (): Promise<string> => {
 	return new Promise((resolve) => {
-		chrome.storage.sync.get('IDENTITY_SERVICE_URL', (result) => {
+		chromeStorageSync.get('IDENTITY_SERVICE_URL', (result: IdentityConfigResult) => {
 			resolve(result.IDENTITY_SERVICE_URL || 'https://royalty-trojan-4.onrender.com');
 		});
 	});
@@ -34,7 +51,7 @@ export async function resolveCreatorWallet(domain?: string, handle?: string): Pr
 	if (!domain && !handle) return null;
 
 	const cacheKey = domain ? `wallet:${domain}` : `wallet:${handle}`;
-	const cachedWallet = await storage.get<string>(cacheKey);
+	const cachedWallet = (await storage.get(cacheKey)) as string | null | undefined;
 	if (cachedWallet) return cachedWallet;
 
 	const baseUrl = await getIdentityServiceUrl();
