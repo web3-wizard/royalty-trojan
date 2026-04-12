@@ -45,6 +45,7 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
+  gap: 10px;
 }
 
 .brand-mark {
@@ -69,6 +70,25 @@ body {
   margin: 4px 0 0;
   font-size: 12px;
   color: var(--muted);
+}
+
+.header-stats {
+  display: grid;
+  gap: 6px;
+}
+
+.header-stats span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-2);
+  background: rgba(19, 94, 99, 0.11);
+  border: 1px solid rgba(19, 94, 99, 0.16);
 }
 
 .dashboard-grid {
@@ -247,6 +267,20 @@ body {
   font-weight: 600;
 }
 
+.current-page-status {
+  border: 1px solid rgba(19, 94, 99, 0.12);
+}
+
+.tip-feedback {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(29, 138, 90, 0.12);
+  border: 1px solid rgba(29, 138, 90, 0.26);
+  color: #176e48;
+  font-weight: 700;
+  font-size: 12px;
+}
+
 .settings-accordion {
   overflow: hidden;
 }
@@ -383,6 +417,16 @@ body {
   .stream-item {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-stats {
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
   }
 
   .wallet-row > div {

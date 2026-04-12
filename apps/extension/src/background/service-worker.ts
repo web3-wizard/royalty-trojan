@@ -27,6 +27,10 @@ type MessagePayload = {
 };
 
 declare const chrome: {
+  action: {
+    setBadgeText(details: { text: string }): void;
+    setBadgeBackgroundColor(details: { color: string }): void;
+  };
   runtime: {
     onInstalled: {
       addListener(listener: () => void): void;
@@ -45,6 +49,19 @@ declare const chrome: {
 
 let wallet: WalletAdapter = new PhantomWalletAdapter();
 const bagsClient = new BagsClient();
+
+async function updateBadge(): Promise<void> {
+  try {
+    const sender = wallet.publicKey ?? undefined;
+    const streams = await bagsClient.listAllActiveStreams({ sender });
+    const count = streams.length;
+    chrome.action.setBadgeText({ text: count > 0 ? count.toString() : '' });
+    chrome.action.setBadgeBackgroundColor({ color: '#7c3aed' });
+  } catch (error) {
+    console.error('Failed to update stream badge:', error);
+    chrome.action.setBadgeText({ text: '' });
+  }
+}
 
 function toStructuredError(error: unknown, fallbackMessage: string, code: string): StructuredError {
   if (error instanceof Error) {
@@ -76,6 +93,7 @@ function sendError(
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Royalty Trojan installed');
+  void updateBadge();
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -87,6 +105,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'CONNECT_WALLET': {
           try {
             await wallet.connect();
+            void updateBadge();
             sendResponse({ success: true, publicKey: wallet.publicKey });
           } catch (error) {
             sendError(sendResponse, 'CONNECT_WALLET_FAILED', error, 'Failed to connect wallet');
@@ -97,6 +116,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'DISCONNECT_WALLET': {
           try {
             await wallet.disconnect();
+            void updateBadge();
             sendResponse({ success: true });
           } catch (error) {
             sendError(sendResponse, 'DISCONNECT_WALLET_FAILED', error, 'Failed to disconnect wallet');
@@ -139,6 +159,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
 
             const signature = await bagsClient.createStream(wallet, recipient, amount);
+            void updateBadge();
             sendResponse({ success: true, signature, tier });
           } catch (error) {
             sendError(sendResponse, 'CREATE_STREAM_FAILED', error, 'Failed to create stream');
@@ -159,6 +180,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
 
             const signature = await bagsClient.cancelStream(wallet, streamId);
+            void updateBadge();
             sendResponse({ success: true, signature });
           } catch (error) {
             sendError(sendResponse, 'CANCEL_STREAM_FAILED', error, 'Failed to cancel stream');
@@ -178,3 +200,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 console.log('Royalty Trojan background service worker running');
+void updateBadge();

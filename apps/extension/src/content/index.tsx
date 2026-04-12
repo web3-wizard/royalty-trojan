@@ -148,6 +148,67 @@ async function openCurrentCreatorTip(): Promise<boolean> {
   return true;
 }
 
+async function resolveCurrentCreatorWallet(): Promise<string | null> {
+  const creator = currentCreator;
+  if (!creator) return null;
+
+  const creatorWithWallet = creator as CreatorWithWallet;
+  if (creatorWithWallet.wallet) return creatorWithWallet.wallet;
+
+  const domain = await extractDomainFromCreator();
+  const wallet = await resolveCreatorWallet(domain ?? undefined, creator.identifier);
+  if (wallet) {
+    creatorWithWallet.wallet = wallet;
+  }
+  return wallet;
+}
+
+async function quickTipCurrentCreator(amount: number): Promise<{ success: boolean; signature?: string; error?: string }> {
+  const creator = currentCreator;
+  if (!creator) {
+    return { success: false, error: 'Creator was not detected on this page.' };
+  }
+
+  let wallet: string | null = null;
+
+  try {
+    wallet = await resolveCurrentCreatorWallet();
+  } catch (error) {
+    console.error('Failed to resolve wallet for quick tip:', error);
+    return { success: false, error: 'Could not resolve creator wallet.' };
+  }
+
+  if (!wallet) {
+    return { success: false, error: 'Creator has not set up Bags payments yet.' };
+  }
+
+  return await new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      {
+        type: 'CREATE_STREAM',
+        payload: {
+          recipient: wallet,
+          amount,
+          tier: 'Quick Tip',
+        },
+      },
+      (response: { success?: boolean; signature?: string; error?: string | { message?: string } }) => {
+        if (response?.success) {
+          resolve({ success: true, signature: response.signature });
+          return;
+        }
+
+        const errorMessage =
+          typeof response?.error === 'string'
+            ? response.error
+            : response?.error?.message || 'Quick tip failed';
+
+        resolve({ success: false, error: errorMessage });
+      }
+    );
+  });
+}
+
 async function detectPlatform() {
   const url = location.href;
   const adapter = adapters.find((candidate) => candidate.match(url));
@@ -262,6 +323,52 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === 'OPEN_CURRENT_CREATOR_TIP') {
     void openCurrentCreatorTip().then((success) => {
       sendResponse({ success });
+    });
+    return true;
+  }
+
+  if (message?.type === 'GET_CURRENT_PAGE_STATUS') {
+    void (async () => {
+      const creator = currentCreator;
+      if (!creator) {
+        sendResponse({
+          success: true,
+          supported: true,
+          creatorDetected: false,
+          bagsEnabled: false,
+        });
+        return;
+      }
+
+      try {
+        const wallet = await resolveCurrentCreatorWallet();
+        sendResponse({
+          success: true,
+          supported: true,
+          creatorDetected: true,
+          bagsEnabled: Boolean(wallet),
+          creatorName: creator.displayName || creator.identifier,
+          wallet,
+          platform: creator.platform,
+        });
+      } catch (error) {
+        console.error('Failed to build current page status:', error);
+        sendResponse({
+          success: false,
+          supported: true,
+          creatorDetected: true,
+          bagsEnabled: false,
+          error: 'Failed to resolve creator wallet',
+        });
+      }
+    })();
+    return true;
+  }
+
+  if (message?.type === 'QUICK_TIP_CURRENT_CREATOR') {
+    const amount = typeof message?.payload?.amount === 'number' ? message.payload.amount : 5;
+    void quickTipCurrentCreator(amount).then((result) => {
+      sendResponse(result);
     });
     return true;
   }

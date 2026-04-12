@@ -112,4 +112,18 @@ export class BagsClient {
 
     return data.streams || [];
   }
+
+  async listAllActiveStreams(filter: { sender?: string; receiver?: string } = {}): Promise<any[]> {
+    // Avoid querying global stream data when no wallet filter is available.
+    if (!filter.sender && !filter.receiver) {
+      return [];
+    }
+
+    const streams = await this.listStreams(filter);
+
+    return streams.filter((stream) => {
+      const status = typeof stream?.status === 'string' ? stream.status.toLowerCase() : '';
+      return status ? status === 'active' : true;
+    });
+  }
 }

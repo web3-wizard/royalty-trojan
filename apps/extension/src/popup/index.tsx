@@ -23,6 +23,23 @@ interface StreamListResponse {
   error?: string | { code?: string; message?: string; details?: unknown };
 }
 
+interface PageStatusResponse {
+  success?: boolean;
+  supported?: boolean;
+  creatorDetected?: boolean;
+  bagsEnabled?: boolean;
+  creatorName?: string;
+  wallet?: string;
+  platform?: string;
+  error?: string;
+}
+
+interface QuickTipResponse {
+  success?: boolean;
+  signature?: string;
+  error?: string;
+}
+
 interface ChromeTab {
   id?: number;
   url?: string;
@@ -69,6 +86,9 @@ const Popup: React.FC = () => {
   const [activeStreams, setActiveStreams] = useState<StreamSummary[]>([]);
   const [activeTabId, setActiveTabId] = useState<number | null>(null);
   const [isSupportedPage, setIsSupportedPage] = useState(false);
+  const [pageStatus, setPageStatus] = useState<PageStatusResponse | null>(null);
+  const [isQuickTipping, setIsQuickTipping] = useState(false);
+  const [quickTipMessage, setQuickTipMessage] = useState<string | null>(null);
 
   useEffect(() => {
     chromeTabs.query({ active: true, currentWindow: true }, (tabs: ChromeTab[]) => {
@@ -77,6 +97,27 @@ const Popup: React.FC = () => {
       setIsSupportedPage(isSupportedUrl(currentTab?.url));
     });
   }, []);
+
+  useEffect(() => {
+    if (!activeTabId || !isSupportedPage) {
+      setPageStatus(null);
+      return;
+    }
+
+    chromeTabs.sendMessage(activeTabId, { type: 'GET_CURRENT_PAGE_STATUS' }, (response?: PageStatusResponse) => {
+      if (!response) {
+        setPageStatus({
+          success: false,
+          supported: true,
+          creatorDetected: false,
+          bagsEnabled: false,
+          error: 'Could not read page status.',
+        });
+        return;
+      }
+      setPageStatus(response);
+    });
+  }, [activeTabId, isSupportedPage]);
 
   useEffect(() => {
     chromeRuntime.sendMessage({ type: 'GET_WALLET_STATUS' }, (response: WalletStatusResponse) => {
@@ -120,6 +161,32 @@ const Popup: React.FC = () => {
   const handleQuickTip = () => {
     if (!activeTabId) return;
 
+    setIsQuickTipping(true);
+    setQuickTipMessage(null);
+    chromeTabs.sendMessage(
+      activeTabId,
+      { type: 'QUICK_TIP_CURRENT_CREATOR', payload: { amount: 5 } },
+      (response?: QuickTipResponse) => {
+        if (response?.success) {
+          setQuickTipMessage('Tip started successfully.');
+          if (publicKey) {
+            chromeRuntime.sendMessage(
+              { type: 'GET_ALL_STREAMS', payload: { sender: publicKey } },
+              (streamResponse: StreamListResponse) => {
+                setActiveStreams(streamResponse.success ? streamResponse.streams ?? [] : []);
+              }
+            );
+          }
+        } else {
+          setQuickTipMessage(response?.error || 'Quick tip failed.');
+        }
+        setIsQuickTipping(false);
+      }
+    );
+  };
+
+  const handleOpenTipModal = () => {
+    if (!activeTabId) return;
     chromeTabs.sendMessage(activeTabId, { type: 'OPEN_CURRENT_CREATOR_TIP' }, () => {
       void 0;
     });
@@ -131,6 +198,14 @@ const Popup: React.FC = () => {
     activeStreams.map((stream) => stream.creatorWallet || 'unknown')
   ).size;
 
+  const creatorStatusText = !isSupportedPage
+    ? 'Open YouTube, X, or Twitch to detect the current creator.'
+    : !pageStatus?.creatorDetected
+      ? 'Creator not detected on this page yet.'
+      : pageStatus.bagsEnabled
+        ? `${pageStatus.creatorName || 'Creator'} is Bags-enabled.`
+        : `${pageStatus.creatorName || 'Creator'} has not enabled Bags yet.`;
+
   return (
     <div className="popup-shell">
       <header className="dashboard-header">
@@ -140,6 +215,10 @@ const Popup: React.FC = () => {
             <h1>Royalty Trojan</h1>
             <p>Status-first creator subscriptions</p>
           </div>
+        </div>
+        <div className="header-stats">
+          <span>{activeStreamCount} active</span>
+          <span>{supportingCreatorsCount} creators</span>
         </div>
       </header>
 
@@ -176,16 +255,25 @@ const Popup: React.FC = () => {
         <section className="actions-panel">
           <h2>Quick Actions</h2>
           <div className="action-stack">
-            {isSupportedPage ? (
-              <button className="primary-action" onClick={handleQuickTip} disabled={!walletConnected}>
-                ⚡ Quick Tip Current Page Creator
-              </button>
-            ) : (
-              <div className="action-hint">Open YouTube, X, or Twitch to tip the current creator.</div>
-            )}
+            <div className="action-hint current-page-status">{creatorStatusText}</div>
+            <button
+              className="primary-action"
+              onClick={handleQuickTip}
+              disabled={!walletConnected || !isSupportedPage || !pageStatus?.bagsEnabled || isQuickTipping}
+            >
+              {isQuickTipping ? 'Sending Tip...' : '⚡ Tip $5'}
+            </button>
+            <button
+              className="secondary-action"
+              onClick={handleOpenTipModal}
+              disabled={!isSupportedPage || !pageStatus?.creatorDetected}
+            >
+              Open Tier Picker
+            </button>
             <button className="secondary-action" disabled title="Pause All Streams is not available yet">
               ⏸️ Pause All Streams
             </button>
+            {quickTipMessage && <div className="tip-feedback">{quickTipMessage}</div>}
           </div>
         </section>
 
