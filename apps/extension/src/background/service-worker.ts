@@ -61,6 +61,7 @@ declare const chrome: {
   scripting: {
     executeScript(details: {
       target: { tabId: number };
+      world?: 'ISOLATED' | 'MAIN';
       func: () => Promise<{ success: boolean; publicKey?: string; error?: string }>;
     }): Promise<Array<{ result?: { success: boolean; publicKey?: string; error?: string } }>>;
   };
@@ -356,20 +357,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             const [injection] = await chrome.scripting.executeScript({
               target: { tabId },
+              world: 'MAIN',
               func: async () => {
                 const page = window as typeof window & {
                   solana?: {
                     isPhantom?: boolean;
                     connect(): Promise<{ publicKey: { toString(): string } }>;
                   };
+                  phantom?: {
+                    solana?: {
+                      isPhantom?: boolean;
+                      connect(): Promise<{ publicKey: { toString(): string } }>;
+                    };
+                  };
                 };
 
-                if (!page.solana?.isPhantom) {
-                  return { success: false, error: 'Phantom is not available on this page.' };
+                const getProvider = () => {
+                  if (page.solana?.isPhantom) return page.solana;
+                  if (page.phantom?.solana?.isPhantom) return page.phantom.solana;
+                  return null;
+                };
+
+                // Phantom injection may be delayed on some pages (e.g. YouTube SPA loads).
+                let provider = getProvider();
+                for (let i = 0; !provider && i < 20; i += 1) {
+                  await new Promise((resolve) => setTimeout(resolve, 100));
+                  provider = getProvider();
+                }
+
+                if (!provider) {
+                  return { success: false, error: 'Phantom provider not detected. Unlock Phantom and refresh this tab.' };
                 }
 
                 try {
-                  const result = await page.solana.connect();
+                  const result = await provider.connect();
                   return { success: true, publicKey: result.publicKey.toString() };
                 } catch {
                   return { success: false, error: 'Wallet connection was rejected.' };
