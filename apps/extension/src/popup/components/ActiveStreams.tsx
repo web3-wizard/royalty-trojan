@@ -15,6 +15,17 @@ interface StreamListResponse {
   error?: string | { code?: string; message?: string; details?: unknown };
 }
 
+const chromeRuntime = (globalThis as typeof globalThis & {
+  chrome: {
+    runtime: {
+      sendMessage(
+        message: { type: string; payload?: unknown },
+        callback: (response: StreamListResponse) => void
+      ): void;
+    };
+  };
+}).chrome.runtime;
+
 declare const chrome: {
   runtime: {
     sendMessage(
@@ -34,7 +45,7 @@ export const ActiveStreams: React.FC<{ publicKey: string | null }> = ({ publicKe
       return;
     }
 
-    chrome.runtime.sendMessage({ type: 'GET_ALL_STREAMS', payload: { sender: publicKey } }, (response: StreamListResponse) => {
+    chromeRuntime.sendMessage({ type: 'GET_ALL_STREAMS', payload: { sender: publicKey } }, (response: StreamListResponse) => {
       if (response.success) {
         setStreams(response.streams ?? []);
       }
@@ -43,7 +54,7 @@ export const ActiveStreams: React.FC<{ publicKey: string | null }> = ({ publicKe
   }, [publicKey]);
 
   const handleCancel = (streamId: string) => {
-    chrome.runtime.sendMessage({ type: 'CANCEL_STREAM', payload: { streamId } }, (response: StreamListResponse) => {
+    chromeRuntime.sendMessage({ type: 'CANCEL_STREAM', payload: { streamId } }, (response: StreamListResponse) => {
       if (response.success) {
         setStreams(streams.filter(s => s.id !== streamId));
       }
