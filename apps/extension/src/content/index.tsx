@@ -52,6 +52,7 @@ const chromeRuntime = (globalThis as typeof globalThis & {
 }).chrome.runtime;
 
 let quickTipMenuRoot: HTMLDivElement | null = null;
+let lastLiveStatusKey = '';
 
 function closeQuickTipMenu() {
   if (!quickTipMenuRoot) return;
@@ -193,6 +194,37 @@ function injectQuickTipButtons(creatorWallet: string) {
   if (!currentAdapter) return;
   currentAdapter.findSubscribeButtons().forEach((button) => {
     injectQuickTipButton(button, creatorWallet);
+  });
+}
+
+function isTwitchLiveNow(): boolean {
+  if (!location.hostname.includes('twitch.tv')) return false;
+
+  const liveBadge = document.querySelector('[data-a-target="stream-title"], [data-a-target="animated-channel-viewers-count"]');
+  if (liveBadge) return true;
+
+  const text = (document.body.textContent || '').toLowerCase();
+  return text.includes('live now') || text.includes('watch live');
+}
+
+function reportCreatorLiveStatus(creator: CreatorIdentity, creatorWallet: string): void {
+  if (creator.platform !== 'twitch') return;
+
+  const isLive = isTwitchLiveNow();
+  const liveKey = `${creator.identifier}:${creatorWallet}:${isLive}`;
+  if (liveKey === lastLiveStatusKey) return;
+  lastLiveStatusKey = liveKey;
+
+  chromeRuntime.sendMessage({
+    type: 'CREATOR_LIVE_STATUS',
+    payload: {
+      creatorWallet,
+      creatorName: creator.displayName || creator.identifier,
+      platform: 'Twitch',
+      isLive,
+    },
+  }, () => {
+    void 0;
   });
 }
 
@@ -373,6 +405,7 @@ async function detectPlatform() {
           await injectCreatorBadge(currentCreator, wallet);
           (currentCreator as CreatorWithWallet).wallet = wallet;
           injectQuickTipButtons(wallet);
+          reportCreatorLiveStatus(currentCreator, wallet);
         } else {
           console.log('No Bags wallet found for creator');
         }
@@ -432,6 +465,7 @@ function attachInterceptor(button: HTMLElement) {
             creatorWithWallet.wallet = wallet;
             await injectCreatorBadge(creator, wallet);
             injectQuickTipButtons(wallet);
+            reportCreatorLiveStatus(creator, wallet);
           }
         }
       } catch (error) {
