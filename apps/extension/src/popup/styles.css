@@ -94,6 +94,19 @@ body {
   cursor: pointer;
 }
 
+.install-phantom-link {
+  color: var(--accent-2);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(19, 94, 99, 0.45);
+}
+
+.install-phantom-link:hover {
+  color: #0f4f53;
+  border-bottom-color: rgba(15, 79, 83, 0.65);
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

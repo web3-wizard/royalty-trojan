@@ -587,6 +587,27 @@ chromeRuntime.onMessage.addListener((message: RuntimeMessage, _sender: unknown, 
     return true;
   }
 
+  if (message?.type === 'CONNECT_WALLET_IN_PAGE') {
+    void (async () => {
+      try {
+        if (!window.solana?.isPhantom) {
+          sendResponse({ success: false, error: 'Phantom not available on this page.' });
+          return;
+        }
+
+        const result = await window.solana.connect();
+        sendResponse({
+          success: true,
+          publicKey: result.publicKey.toString(),
+        });
+      } catch (error) {
+        console.error('Failed CONNECT_WALLET_IN_PAGE:', error);
+        sendResponse({ success: false, error: 'Wallet connection was rejected.' });
+      }
+    })();
+    return true;
+  }
+
   return false;
 });
 

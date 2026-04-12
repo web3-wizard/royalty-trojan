@@ -68,6 +68,11 @@ const chromeGlobal = globalThis as typeof globalThis & {
         queryInfo: { active: boolean; currentWindow: boolean },
         callback: (tabs: ChromeTab[]) => void
       ): void;
+      sendMessage(
+        tabId: number,
+        message: { type: string; payload?: unknown },
+        callback?: (response: MessageResponse) => void
+      ): void;
     };
   };
 };
@@ -134,8 +139,11 @@ const Popup: React.FC = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tiers, setTiers] = useState<Tier[]>(DEFAULT_TIERS);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [hasPhantom, setHasPhantom] = useState(false);
 
   useEffect(() => {
+    setHasPhantom(Boolean(window.solana?.isPhantom));
+
     storage.local.get('customTiers', (result) => {
       if (result.customTiers && result.customTiers.length > 0) {
         setTiers(result.customTiers);
@@ -219,7 +227,30 @@ const Popup: React.FC = () => {
 
       const tryPopupPhantom = async () => {
         if (!window.solana?.isPhantom) {
-          setActionError('Unable to connect wallet. Ensure Phantom is installed and unlocked.');
+          tabs.query({ active: true, currentWindow: true }, (activeTabs: ChromeTab[]) => {
+            const activeTab = activeTabs[0];
+            const tabId = activeTab?.id;
+            if (!tabId || !isSupportedUrl(activeTab?.url)) {
+              setActionError('Open a YouTube, X, or Twitch page and try Connect again.');
+              return;
+            }
+
+            tabs.sendMessage(tabId, { type: 'CONNECT_WALLET_IN_PAGE' }, (tabResponse?: MessageResponse) => {
+              const tabErr = chromeGlobal.chrome.runtime.lastError;
+              if (tabErr) {
+                void tabErr.message;
+                setActionError('Could not reach page wallet. Refresh the tab and try again.');
+                return;
+              }
+
+              if (tabResponse?.success && tabResponse.publicKey) {
+                setWallet({ connected: true, publicKey: tabResponse.publicKey });
+                return;
+              }
+
+              setActionError(tabResponse?.error || 'Unable to connect wallet. Ensure Phantom is unlocked.');
+            });
+          });
           return;
         }
 
@@ -280,7 +311,19 @@ const Popup: React.FC = () => {
         <span className={`wallet-dot ${wallet.connected ? 'connected' : 'disconnected'}`} />
         <span className="wallet-address">{truncatePublicKey(wallet.publicKey)}</span>
         {!wallet.connected && (
-          <button className="connect-inline" onClick={connectWallet}>Connect</button>
+          <>
+            <button className="connect-inline" onClick={connectWallet}>Connect</button>
+            {!hasPhantom && (
+              <a
+                className="install-phantom-link"
+                href="https://phantom.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Install Phantom
+              </a>
+            )}
+          </>
         )}
       </div>
 
