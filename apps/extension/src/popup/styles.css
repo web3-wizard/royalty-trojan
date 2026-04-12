@@ -1,0 +1,173 @@
+.popup-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.header h1 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.wallet-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f5f5f5;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.status-indicator.connected {
+  background: #00cc66;
+}
+
+.status-indicator.disconnected {
+  background: #ff4444;
+}
+
+.connect-btn, .disconnect-btn {
+  margin-left: auto;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #7c3aed;
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.disconnect-btn {
+  background: #666;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 16px;
+}
+
+.tabs button {
+  flex: 1;
+  padding: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  color: #666;
+  border-bottom: 2px solid transparent;
+}
+
+.tabs button.active {
+  color: #7c3aed;
+  border-bottom-color: #7c3aed;
+}
+
+.content {
+  flex: 1;
+}
+
+.welcome h2 {
+  font-size: 16px;
+  margin-top: 0;
+}
+
+.welcome code {
+  display: block;
+  background: #f0f0f0;
+  padding: 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.hint {
+  font-size: 12px;
+  color: #666;
+}
+
+.streams-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stream-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f9f9f9;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.stream-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stream-info small {
+  font-size: 11px;
+  color: #888;
+}
+
+.cancel-btn {
+  padding: 4px 8px;
+  background: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.settings .tier-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tier-input input {
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.save-btn {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #7c3aed;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.saved-indicator {
+  margin-left: 8px;
+  color: #00cc66;
+  font-size: 12px;
+}
+
+.message {
+  color: #666;
+  text-align: center;
+  padding: 20px;
+}
