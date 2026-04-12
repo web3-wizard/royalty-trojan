@@ -9,6 +9,21 @@ interface Stream {
   status: string;
 }
 
+interface StreamListResponse {
+  success?: boolean;
+  streams?: Stream[];
+  error?: string | { code?: string; message?: string; details?: unknown };
+}
+
+declare const chrome: {
+  runtime: {
+    sendMessage(
+      message: { type: string; payload?: unknown },
+      callback: (response: StreamListResponse) => void
+    ): void;
+  };
+};
+
 export const ActiveStreams: React.FC<{ publicKey: string | null }> = ({ publicKey }) => {
   const [streams, setStreams] = useState<Stream[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,16 +34,16 @@ export const ActiveStreams: React.FC<{ publicKey: string | null }> = ({ publicKe
       return;
     }
 
-    chrome.runtime.sendMessage({ type: 'GET_ALL_STREAMS', payload: { sender: publicKey } }, (response) => {
+    chrome.runtime.sendMessage({ type: 'GET_ALL_STREAMS', payload: { sender: publicKey } }, (response: StreamListResponse) => {
       if (response.success) {
-        setStreams(response.streams);
+        setStreams(response.streams ?? []);
       }
       setLoading(false);
     });
   }, [publicKey]);
 
   const handleCancel = (streamId: string) => {
-    chrome.runtime.sendMessage({ type: 'CANCEL_STREAM', payload: { streamId } }, (response) => {
+    chrome.runtime.sendMessage({ type: 'CANCEL_STREAM', payload: { streamId } }, (response: StreamListResponse) => {
       if (response.success) {
         setStreams(streams.filter(s => s.id !== streamId));
       }
