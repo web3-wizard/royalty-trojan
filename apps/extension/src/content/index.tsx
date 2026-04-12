@@ -551,6 +551,34 @@ chromeRuntime.onMessage.addListener((message: RuntimeMessage, _sender: unknown, 
     return true;
   }
 
+  if (message?.type === 'GET_CREATOR_INFO') {
+    void (async () => {
+      const creator = currentCreator;
+      if (!creator) {
+        sendResponse({ creator: null });
+        return;
+      }
+
+      let wallet = (creator as CreatorWithWallet).wallet;
+      if (!wallet) {
+        wallet = await resolveCurrentCreatorWallet() ?? undefined;
+      }
+
+      if (!wallet) {
+        sendResponse({ creator: null });
+        return;
+      }
+
+      sendResponse({
+        creator: {
+          name: creator.displayName || creator.identifier,
+          wallet,
+        },
+      });
+    })();
+    return true;
+  }
+
   if (message?.type === 'QUICK_TIP_CURRENT_CREATOR') {
     const amount = typeof message?.payload?.amount === 'number' ? message.payload.amount : 5;
     void quickTipCurrentCreator(amount).then((result) => {

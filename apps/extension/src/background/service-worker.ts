@@ -314,6 +314,62 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           break;
         }
 
+        case 'GET_STREAM_STATS': {
+          try {
+            if (!wallet.connected || !wallet.publicKey) {
+              sendResponse({ success: true, active: 0, paused: 0, totalSpentThisMonth: 0 });
+              break;
+            }
+
+            const streams = await bagsClient.listStreams({ sender: wallet.publicKey });
+            let active = 0;
+            let paused = 0;
+            let totalSpentThisMonth = 0;
+
+            for (const stream of streams) {
+              const status = typeof stream?.status === 'string' ? stream.status.toLowerCase() : 'active';
+              if (status === 'paused') {
+                paused += 1;
+              } else {
+                active += 1;
+              }
+
+              if (typeof stream?.amountPerMonth === 'number') {
+                totalSpentThisMonth += stream.amountPerMonth;
+              }
+            }
+
+            sendResponse({ success: true, active, paused, totalSpentThisMonth });
+          } catch (error) {
+            sendError(sendResponse, 'GET_STREAM_STATS_FAILED', error, 'Failed to fetch stream stats');
+          }
+          break;
+        }
+
+        case 'QUICK_TIP': {
+          try {
+            const { recipient, amount } = message.payload ?? {};
+
+            if (!recipient || typeof amount !== 'number') {
+              sendError(sendResponse, 'INVALID_QUICK_TIP_PAYLOAD', null, 'Missing recipient or amount');
+              break;
+            }
+
+            if (!wallet.connected) {
+              await wallet.connect();
+            }
+
+            const signature = await bagsClient.createStream(wallet, recipient, amount);
+            clearStreamCache();
+            void updateBadge();
+            void checkLowBalanceAndNotify();
+            sendResponse({ success: true, signature });
+          } catch (error) {
+            sendError(sendResponse, 'QUICK_TIP_FAILED', error, 'Failed to send quick tip');
+          }
+          break;
+        }
+
         case 'CREATE_STREAM': {
           try {
             const { recipient, amount, tier } = message.payload ?? {};

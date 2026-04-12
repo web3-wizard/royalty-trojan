@@ -40,6 +40,116 @@ body {
   padding: 14px;
 }
 
+.popup-container {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow);
+}
+
+.wallet-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.wallet-dot.connected {
+  background: var(--success);
+}
+
+.wallet-dot.disconnected {
+  background: var(--danger);
+}
+
+.wallet-address {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.connect-inline,
+.tip-inline {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent-2);
+}
+
+.stat-label {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.current-creator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(19, 94, 99, 0.08);
+  border: 1px solid rgba(19, 94, 99, 0.15);
+  font-size: 12px;
+  color: var(--accent-2);
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.settings-slide-down {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 12px;
+}
+
 .dashboard-header {
   display: flex;
   align-items: center;
