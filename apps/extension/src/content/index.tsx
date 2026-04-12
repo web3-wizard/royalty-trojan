@@ -29,6 +29,172 @@ let injectBadgeFn: ((
 ) => void) | null = null;
 
 type CreatorWithWallet = CreatorIdentity & { wallet?: string };
+type RuntimeMessage = { type: string; payload?: { amount?: number } };
+
+const chromeRuntime = (globalThis as typeof globalThis & {
+  chrome: {
+    runtime: {
+      sendMessage(
+        message: { type: string; payload?: unknown },
+        callback: (response: any) => void
+      ): void;
+      onMessage: {
+        addListener(
+          listener: (
+            message: RuntimeMessage,
+            sender: unknown,
+            sendResponse: (response: unknown) => void
+          ) => boolean | void
+        ): void;
+      };
+    };
+  };
+}).chrome.runtime;
+
+let quickTipMenuRoot: HTMLDivElement | null = null;
+
+function closeQuickTipMenu() {
+  if (!quickTipMenuRoot) return;
+  quickTipMenuRoot.remove();
+  quickTipMenuRoot = null;
+}
+
+async function quickTipWallet(
+  recipientWallet: string,
+  amount: number
+): Promise<{ success: boolean; signature?: string; error?: string }> {
+  return await new Promise((resolve) => {
+    chromeRuntime.sendMessage(
+      {
+        type: 'CREATE_STREAM',
+        payload: {
+          recipient: recipientWallet,
+          amount,
+          tier: `Quick Tip $${amount}`,
+        },
+      },
+      (response: { success?: boolean; signature?: string; error?: string | { message?: string } }) => {
+        if (response?.success) {
+          resolve({ success: true, signature: response.signature });
+          return;
+        }
+
+        const errorMessage =
+          typeof response?.error === 'string'
+            ? response.error
+            : response?.error?.message || 'Quick tip failed';
+
+        resolve({ success: false, error: errorMessage });
+      }
+    );
+  });
+}
+
+function showQuickTipModal(anchor: HTMLElement, creatorWallet: string) {
+  closeQuickTipMenu();
+
+  const rect = anchor.getBoundingClientRect();
+  const menu = document.createElement('div');
+  menu.setAttribute('data-rt-tip-menu', 'true');
+  menu.style.cssText = [
+    'position:fixed',
+    `top:${Math.min(window.innerHeight - 70, rect.bottom + 6)}px`,
+    `left:${Math.max(8, rect.left)}px`,
+    'z-index:2147483647',
+    'display:flex',
+    'gap:6px',
+    'padding:6px',
+    'background:rgba(17,17,21,0.94)',
+    'border:1px solid rgba(255,255,255,0.14)',
+    'border-radius:14px',
+    'box-shadow:0 10px 24px rgba(0,0,0,0.35)',
+  ].join(';');
+
+  [1, 5, 10].forEach((amount) => {
+    const preset = document.createElement('button');
+    preset.type = 'button';
+    preset.textContent = `$${amount}`;
+    preset.style.cssText = [
+      'border:none',
+      'border-radius:999px',
+      'padding:5px 10px',
+      'font-size:12px',
+      'font-weight:700',
+      'background:#7c3aed',
+      'color:white',
+      'cursor:pointer',
+    ].join(';');
+
+    preset.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      preset.disabled = true;
+      preset.style.opacity = '0.7';
+
+      const result = await quickTipWallet(creatorWallet, amount);
+      if (result.success) {
+        showToast(`Started $${amount} stream tip`, 'success');
+      } else {
+        showToast(result.error || 'Quick tip failed', 'error');
+      }
+
+      closeQuickTipMenu();
+    });
+
+    menu.appendChild(preset);
+  });
+
+  document.body.appendChild(menu);
+  quickTipMenuRoot = menu;
+
+  // Dismiss the mini menu as soon as user clicks elsewhere.
+  setTimeout(() => {
+    document.addEventListener(
+      'click',
+      () => {
+        closeQuickTipMenu();
+      },
+      { once: true }
+    );
+  }, 0);
+}
+
+function injectQuickTipButton(container: HTMLElement, creatorWallet: string) {
+  const parent = container.parentElement ?? container;
+  if (parent.querySelector('[data-rt-quick-tip]')) return;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.setAttribute('data-rt-quick-tip', 'true');
+  btn.innerHTML = '💰 Tip';
+  btn.style.cssText = [
+    'margin-left:8px',
+    'padding:4px 8px',
+    'border-radius:16px',
+    'border:1px solid rgba(124,58,237,0.35)',
+    'background:linear-gradient(135deg,#8b5cf6,#7c3aed)',
+    'color:#fff',
+    'font-size:12px',
+    'font-weight:700',
+    'cursor:pointer',
+    'line-height:1.2',
+  ].join(';');
+
+  btn.onclick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    showQuickTipModal(btn, creatorWallet);
+  };
+
+  parent.appendChild(btn);
+}
+
+function injectQuickTipButtons(creatorWallet: string) {
+  if (!currentAdapter) return;
+  currentAdapter.findSubscribeButtons().forEach((button) => {
+    injectQuickTipButton(button, creatorWallet);
+  });
+}
 
 async function ensureModalRuntime() {
   if (createRootFn && ModalComponent) return;
@@ -123,14 +289,15 @@ async function openCurrentCreatorTip(): Promise<boolean> {
   }
 
   const creatorWithWallet = creator as CreatorWithWallet;
-  let wallet: string | undefined = creatorWithWallet.wallet;
+  let wallet: string | null | undefined = creatorWithWallet.wallet;
 
   try {
     if (!wallet) {
       const domain = await extractDomainFromCreator();
-      wallet = await resolveCreatorWallet(domain ?? undefined, creator.identifier);
-      if (wallet) {
-        creatorWithWallet.wallet = wallet;
+      const resolvedWallet = await resolveCreatorWallet(domain ?? undefined, creator.identifier);
+      if (resolvedWallet) {
+        creatorWithWallet.wallet = resolvedWallet;
+        wallet = resolvedWallet;
       }
     }
   } catch (error) {
@@ -182,31 +349,7 @@ async function quickTipCurrentCreator(amount: number): Promise<{ success: boolea
     return { success: false, error: 'Creator has not set up Bags payments yet.' };
   }
 
-  return await new Promise((resolve) => {
-    chrome.runtime.sendMessage(
-      {
-        type: 'CREATE_STREAM',
-        payload: {
-          recipient: wallet,
-          amount,
-          tier: 'Quick Tip',
-        },
-      },
-      (response: { success?: boolean; signature?: string; error?: string | { message?: string } }) => {
-        if (response?.success) {
-          resolve({ success: true, signature: response.signature });
-          return;
-        }
-
-        const errorMessage =
-          typeof response?.error === 'string'
-            ? response.error
-            : response?.error?.message || 'Quick tip failed';
-
-        resolve({ success: false, error: errorMessage });
-      }
-    );
-  });
+  return await quickTipWallet(wallet, amount);
 }
 
 async function detectPlatform() {
@@ -229,6 +372,7 @@ async function detectPlatform() {
         if (wallet) {
           await injectCreatorBadge(currentCreator, wallet);
           (currentCreator as CreatorWithWallet).wallet = wallet;
+          injectQuickTipButtons(wallet);
         } else {
           console.log('No Bags wallet found for creator');
         }
@@ -251,6 +395,13 @@ function scanForButtons() {
   const buttons = currentAdapter.findSubscribeButtons();
   console.log(`[Royalty Trojan] Found ${buttons.length} subscribe button(s)`);
   buttons.forEach(attachInterceptor);
+
+  const wallet = (currentCreator as CreatorWithWallet | null)?.wallet;
+  if (wallet) {
+    buttons.forEach((button) => {
+      injectQuickTipButton(button, wallet);
+    });
+  }
 }
 
 function attachInterceptor(button: HTMLElement) {
@@ -280,6 +431,7 @@ function attachInterceptor(button: HTMLElement) {
           if (wallet) {
             creatorWithWallet.wallet = wallet;
             await injectCreatorBadge(creator, wallet);
+            injectQuickTipButtons(wallet);
           }
         }
       } catch (error) {
@@ -319,7 +471,7 @@ function startObserving() {
 
 void detectPlatform();
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chromeRuntime.onMessage.addListener((message: RuntimeMessage, _sender: unknown, sendResponse: (response: unknown) => void) => {
   if (message?.type === 'OPEN_CURRENT_CREATOR_TIP') {
     void openCurrentCreatorTip().then((success) => {
       sendResponse({ success });
