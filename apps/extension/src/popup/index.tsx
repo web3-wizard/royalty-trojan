@@ -277,6 +277,25 @@ const Popup: React.FC = () => {
           </div>
         </section>
 
+        <section className="trust-panel" aria-label="Permission explanation">
+          <h2>🔒 We request these permissions:</h2>
+          <ul className="trust-list">
+            <li>
+              <strong>storage:</strong> Save your custom tiers and wallet cache.
+            </li>
+            <li>
+              <strong>activeTab:</strong> Only access the page when you click the icon or use a quick action.
+            </li>
+            <li>
+              <strong>Host permissions (YouTube, X, Twitch):</strong> To inject the Bags badge and intercept
+              subscribe buttons.
+            </li>
+          </ul>
+          <a className="privacy-link" href="privacy-policy.html" target="_blank" rel="noopener noreferrer">
+            Read our privacy policy
+          </a>
+        </section>
+
         <details className="settings-accordion">
           <summary>⚙️ Settings</summary>
           <div className="settings-panel">

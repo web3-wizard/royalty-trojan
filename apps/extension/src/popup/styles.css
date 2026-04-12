@@ -99,6 +99,7 @@ body {
 .wallet-panel,
 .metrics-panel,
 .actions-panel,
+.trust-panel,
 .settings-accordion {
   background: var(--panel);
   border: 1px solid var(--panel-border);
@@ -111,6 +112,46 @@ body {
 .metrics-panel,
 .actions-panel {
   padding: 14px;
+}
+
+.trust-panel {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.trust-panel h2 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--accent-2);
+  letter-spacing: 0.01em;
+}
+
+.trust-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  color: var(--text);
+}
+
+.trust-list li {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.privacy-link {
+  justify-self: start;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-2);
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(19, 94, 99, 0.45);
+}
+
+.privacy-link:hover {
+  color: #0f4f53;
+  border-bottom-color: rgba(15, 79, 83, 0.65);
 }
 
 .wallet-row {
