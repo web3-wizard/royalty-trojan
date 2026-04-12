@@ -5,6 +5,24 @@ interface Tier {
   amount: number;
 }
 
+interface SettingsStorageResult {
+  customTiers?: Tier[];
+}
+
+const chromeStorage = (globalThis as typeof globalThis & {
+  chrome: {
+    storage: {
+      local: {
+        get(
+          keys: string,
+          callback: (result: SettingsStorageResult) => void
+        ): void;
+        set(items: Record<string, unknown>, callback?: () => void): void;
+      };
+    };
+  };
+}).chrome.storage.local;
+
 const DEFAULT_TIERS: Tier[] = [
   { name: 'Tip Jar', amount: 5 },
   { name: 'Supporter', amount: 10 },
@@ -17,7 +35,7 @@ export const Settings: React.FC = () => {
 
   useEffect(() => {
     // Load saved tiers from storage
-    chrome.storage.local.get('customTiers', (result) => {
+    chromeStorage.get('customTiers', (result: SettingsStorageResult) => {
       if (result.customTiers) {
         setTiers(result.customTiers);
       }
@@ -25,7 +43,7 @@ export const Settings: React.FC = () => {
   }, []);
 
   const saveTiers = () => {
-    chrome.storage.local.set({ customTiers: tiers }, () => {
+    chromeStorage.set({ customTiers: tiers }, () => {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     });
