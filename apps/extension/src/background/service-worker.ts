@@ -321,6 +321,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           break;
         }
 
+        case 'RESOLVE_CREATOR_WALLET': {
+          try {
+            const { domain, handle } = message.payload ?? {};
+            if (!domain || !handle) {
+              sendError(sendResponse, 'INVALID_RESOLVE_CREATOR_WALLET_PAYLOAD', null, 'Missing domain or handle');
+              break;
+            }
+
+            const wallet = await import('../core/identity-client.js').then((mod) => mod.resolveCreatorWallet(domain, handle));
+            sendResponse({ success: true, wallet });
+          } catch (error) {
+            sendError(sendResponse, 'RESOLVE_CREATOR_WALLET_FAILED', error, 'Failed to resolve creator wallet');
+          }
+          break;
+        }
+
         case 'GET_STREAM_STATS': {
           try {
             if (!wallet.connected || !wallet.publicKey) {

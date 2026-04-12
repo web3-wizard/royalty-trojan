@@ -24,6 +24,11 @@ type CreatorInfo = {
   wallet: string;
 };
 
+type CreatorResolutionResponse = {
+  success?: boolean;
+  wallet?: string | null;
+};
+
 type MessageResponse = {
   success?: boolean;
   connected?: boolean;
@@ -63,11 +68,6 @@ const chromeGlobal = globalThis as typeof globalThis & {
         queryInfo: { active: boolean; currentWindow: boolean },
         callback: (tabs: ChromeTab[]) => void
       ): void;
-      sendMessage(
-        tabId: number,
-        message: { type: string; payload?: unknown },
-        callback?: (response: MessageResponse) => void
-      ): void;
     };
   };
 };
@@ -82,6 +82,49 @@ function isSupportedUrl(url: string | undefined): boolean {
 function truncatePublicKey(publicKey: string | null): string {
   if (!publicKey) return 'Not connected';
   return `${publicKey.slice(0, 6)}...${publicKey.slice(-4)}`;
+}
+
+function parseCreatorFromUrl(url: string | undefined): { name: string; domain: string; handle: string } | null {
+  if (!url) return null;
+
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, '');
+    const segments = parsed.pathname.split('/').filter(Boolean);
+
+    if (host.includes('x.com')) {
+      const handle = segments[0];
+      return handle ? { name: `@${handle}`, domain: host, handle } : null;
+    }
+
+    if (host.includes('twitch.tv')) {
+      const handle = segments[0];
+      return handle && handle !== 'directory' ? { name: handle, domain: host, handle } : null;
+    }
+
+    if (host.includes('youtube.com')) {
+      const atHandle = segments.find((part) => part.startsWith('@'));
+      if (atHandle) {
+        return { name: atHandle, domain: host, handle: atHandle };
+      }
+
+      const channelIndex = segments.indexOf('channel');
+      if (channelIndex >= 0 && segments[channelIndex + 1]) {
+        const handle = segments[channelIndex + 1];
+        return { name: handle, domain: host, handle };
+      }
+
+      const userIndex = segments.indexOf('user');
+      if (userIndex >= 0 && segments[userIndex + 1]) {
+        const handle = segments[userIndex + 1];
+        return { name: handle, domain: host, handle };
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 const Popup: React.FC = () => {
@@ -126,23 +169,32 @@ const Popup: React.FC = () => {
 
     tabs.query({ active: true, currentWindow: true }, (activeTabs: ChromeTab[]) => {
       const activeTab = activeTabs[0];
-      const tabId = activeTab?.id;
-      if (!isSupportedUrl(activeTab?.url)) {
+      const creator = parseCreatorFromUrl(activeTab?.url);
+      if (!creator) {
         setCurrentPageCreator(null);
         return;
       }
-      if (!tabId) return;
 
-      tabs.sendMessage(tabId, { type: 'GET_CREATOR_INFO' }, (response?: MessageResponse) => {
-        const err = chromeGlobal.chrome.runtime.lastError;
-        if (err) {
-          void err.message;
-          setCurrentPageCreator(null);
-          return;
+      runtime.sendMessage(
+        {
+          type: 'RESOLVE_CREATOR_WALLET',
+          payload: { domain: creator.domain, handle: creator.handle },
+        },
+        (response?: CreatorResolutionResponse) => {
+          const err = chromeGlobal.chrome.runtime.lastError;
+          if (err) {
+            void err.message;
+            setCurrentPageCreator(null);
+            return;
+          }
+
+          if (response?.wallet) {
+            setCurrentPageCreator({ name: creator.name, wallet: response.wallet });
+          } else {
+            setCurrentPageCreator(null);
+          }
         }
-
-        if (response?.creator) setCurrentPageCreator(response.creator);
-      });
+      );
     });
   }, []);
 
