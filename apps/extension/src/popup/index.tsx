@@ -3,55 +3,59 @@ import { createRoot } from 'react-dom/client';
 import { Settings } from './components/Settings.js';
 import './styles.css';
 
-interface WalletStatusResponse {
+type Tier = {
+  name: string;
+  amount: number;
+};
+
+type WalletState = {
   connected: boolean;
   publicKey: string | null;
-  ready?: boolean;
-  success?: boolean;
-  error?: string | { code?: string; message?: string; details?: unknown };
-  signature?: string;
-}
+};
 
-interface StreamSummary {
-  creatorWallet?: string;
-  status?: string;
-}
+type StreamStats = {
+  active: number;
+  paused: number;
+  totalSpentThisMonth: number;
+};
 
-interface StreamListResponse {
-  success?: boolean;
-  streams?: StreamSummary[];
-  error?: string | { code?: string; message?: string; details?: unknown };
-}
+type CreatorInfo = {
+  name: string;
+  wallet: string;
+};
 
-interface PageStatusResponse {
+type MessageResponse = {
   success?: boolean;
-  supported?: boolean;
-  creatorDetected?: boolean;
-  bagsEnabled?: boolean;
-  creatorName?: string;
-  wallet?: string;
-  platform?: string;
+  connected?: boolean;
+  publicKey?: string | null;
+  active?: number;
+  paused?: number;
+  totalSpentThisMonth?: number;
+  creator?: CreatorInfo;
   error?: string;
-}
+};
 
-interface QuickTipResponse {
-  success?: boolean;
-  signature?: string;
-  error?: string;
-}
+type ChromeTab = { id?: number };
 
-interface ChromeTab {
-  id?: number;
-  url?: string;
-}
+const DEFAULT_TIERS: Tier[] = [
+  { name: 'Tip Jar', amount: 5 },
+  { name: 'Supporter', amount: 10 },
+  { name: 'Patron', amount: 20 },
+];
 
 const chromeGlobal = globalThis as typeof globalThis & {
   chrome: {
     runtime: {
       sendMessage(
         message: { type: string; payload?: unknown },
-        callback: (response: WalletStatusResponse) => void
+        callback?: (response: MessageResponse) => void
       ): void;
+      openOptionsPage?: () => void;
+    };
+    storage: {
+      local: {
+        get(keys: string, callback: (result: { customTiers?: Tier[] }) => void): void;
+      };
     };
     tabs: {
       query(
@@ -61,248 +65,121 @@ const chromeGlobal = globalThis as typeof globalThis & {
       sendMessage(
         tabId: number,
         message: { type: string; payload?: unknown },
-        callback?: (response: { success?: boolean; error?: string }) => void
+        callback?: (response: MessageResponse) => void
       ): void;
     };
   };
 };
 
-const chromeRuntime = chromeGlobal.chrome.runtime;
-const chromeTabs = chromeGlobal.chrome.tabs;
+const { runtime, tabs, storage } = chromeGlobal.chrome;
 
-function isSupportedUrl(url: string | undefined): boolean {
-  if (!url) return false;
-  return /https:\/\/([^.]+\.)?(youtube\.com|x\.com|twitch\.tv)\//.test(url);
-}
-
-function truncateWallet(publicKey: string | null): string {
+function truncatePublicKey(publicKey: string | null): string {
   if (!publicKey) return 'Not connected';
-  return publicKey.length > 12 ? `${publicKey.slice(0, 4)}...${publicKey.slice(-6)}` : publicKey;
+  return `${publicKey.slice(0, 6)}...${publicKey.slice(-4)}`;
 }
 
 const Popup: React.FC = () => {
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [publicKey, setPublicKey] = useState<string | null>(null);
-  const [activeStreams, setActiveStreams] = useState<StreamSummary[]>([]);
-  const [activeTabId, setActiveTabId] = useState<number | null>(null);
-  const [isSupportedPage, setIsSupportedPage] = useState(false);
-  const [pageStatus, setPageStatus] = useState<PageStatusResponse | null>(null);
-  const [isQuickTipping, setIsQuickTipping] = useState(false);
-  const [quickTipMessage, setQuickTipMessage] = useState<string | null>(null);
+  const [wallet, setWallet] = useState<WalletState>({ connected: false, publicKey: null });
+  const [streamStats, setStreamStats] = useState<StreamStats>({ active: 0, paused: 0, totalSpentThisMonth: 0 });
+  const [currentPageCreator, setCurrentPageCreator] = useState<CreatorInfo | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tiers, setTiers] = useState<Tier[]>(DEFAULT_TIERS);
 
   useEffect(() => {
-    chromeTabs.query({ active: true, currentWindow: true }, (tabs: ChromeTab[]) => {
-      const currentTab = tabs[0];
-      setActiveTabId(currentTab?.id ?? null);
-      setIsSupportedPage(isSupportedUrl(currentTab?.url));
+    storage.local.get('customTiers', (result) => {
+      if (result.customTiers && result.customTiers.length > 0) {
+        setTiers(result.customTiers);
+      }
+    });
+
+    runtime.sendMessage({ type: 'GET_WALLET_STATUS' }, (response: MessageResponse) => {
+      setWallet({
+        connected: Boolean(response.connected),
+        publicKey: response.publicKey ?? null,
+      });
+    });
+
+    runtime.sendMessage({ type: 'GET_STREAM_STATS' }, (response: MessageResponse) => {
+      setStreamStats({
+        active: Number(response.active ?? 0),
+        paused: Number(response.paused ?? 0),
+        totalSpentThisMonth: Number(response.totalSpentThisMonth ?? 0),
+      });
+    });
+
+    tabs.query({ active: true, currentWindow: true }, (activeTabs: ChromeTab[]) => {
+      const tabId = activeTabs[0]?.id;
+      if (!tabId) return;
+      tabs.sendMessage(tabId, { type: 'GET_CREATOR_INFO' }, (response?: MessageResponse) => {
+        if (response?.creator) setCurrentPageCreator(response.creator);
+      });
     });
   }, []);
 
-  useEffect(() => {
-    if (!activeTabId || !isSupportedPage) {
-      setPageStatus(null);
-      return;
-    }
-
-    chromeTabs.sendMessage(activeTabId, { type: 'GET_CURRENT_PAGE_STATUS' }, (response?: PageStatusResponse) => {
-      if (!response) {
-        setPageStatus({
-          success: false,
-          supported: true,
-          creatorDetected: false,
-          bagsEnabled: false,
-          error: 'Could not read page status.',
-        });
-        return;
-      }
-      setPageStatus(response);
-    });
-  }, [activeTabId, isSupportedPage]);
-
-  useEffect(() => {
-    chromeRuntime.sendMessage({ type: 'GET_WALLET_STATUS' }, (response: WalletStatusResponse) => {
-      setWalletConnected(response.connected);
-      setPublicKey(response.publicKey);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!publicKey) {
-      setActiveStreams([]);
-      return;
-    }
-
-    chromeRuntime.sendMessage(
-      { type: 'GET_ALL_STREAMS', payload: { sender: publicKey } },
-      (response: StreamListResponse) => {
-        setActiveStreams(response.success ? response.streams ?? [] : []);
-      }
-    );
-  }, [publicKey]);
-
-  const handleConnect = () => {
-    chromeRuntime.sendMessage({ type: 'CONNECT_WALLET' }, (response: WalletStatusResponse) => {
-      if (response.success) {
-        setWalletConnected(true);
-        setPublicKey(response.publicKey);
-      }
-    });
-  };
-
-  const handleDisconnect = () => {
-    chromeRuntime.sendMessage({ type: 'DISCONNECT_WALLET' }, (response: WalletStatusResponse) => {
-      if (response.success) {
-        setWalletConnected(false);
-        setPublicKey(null);
-      }
+  const connectWallet = () => {
+    runtime.sendMessage({ type: 'CONNECT_WALLET' }, (response: MessageResponse) => {
+      setWallet({
+        connected: Boolean(response.success),
+        publicKey: response.publicKey ?? null,
+      });
     });
   };
 
   const handleQuickTip = () => {
-    if (!activeTabId) return;
+    if (!currentPageCreator || tiers.length === 0) return;
 
-    setIsQuickTipping(true);
-    setQuickTipMessage(null);
-    chromeTabs.sendMessage(
-      activeTabId,
-      { type: 'QUICK_TIP_CURRENT_CREATOR', payload: { amount: 5 } },
-      (response?: QuickTipResponse) => {
-        if (response?.success) {
-          setQuickTipMessage('Tip started successfully.');
-          if (publicKey) {
-            chromeRuntime.sendMessage(
-              { type: 'GET_ALL_STREAMS', payload: { sender: publicKey } },
-              (streamResponse: StreamListResponse) => {
-                setActiveStreams(streamResponse.success ? streamResponse.streams ?? [] : []);
-              }
-            );
-          }
-        } else {
-          setQuickTipMessage(response?.error || 'Quick tip failed.');
-        }
-        setIsQuickTipping(false);
-      }
-    );
-  };
-
-  const handleOpenTipModal = () => {
-    if (!activeTabId) return;
-    chromeTabs.sendMessage(activeTabId, { type: 'OPEN_CURRENT_CREATOR_TIP' }, () => {
-      void 0;
+    runtime.sendMessage({
+      type: 'QUICK_TIP',
+      payload: {
+        recipient: currentPageCreator.wallet,
+        amount: tiers[0].amount,
+      },
     });
   };
 
-  const activeStreamCount = activeStreams.length;
-  const pausedStreamCount = activeStreams.filter((stream) => stream.status === 'paused').length;
-  const supportingCreatorsCount = new Set(
-    activeStreams.map((stream) => stream.creatorWallet || 'unknown')
-  ).size;
-
-  const creatorStatusText = !isSupportedPage
-    ? 'Open YouTube, X, or Twitch to detect the current creator.'
-    : !pageStatus?.creatorDetected
-      ? 'Creator not detected on this page yet.'
-      : pageStatus.bagsEnabled
-        ? `${pageStatus.creatorName || 'Creator'} is Bags-enabled.`
-        : `${pageStatus.creatorName || 'Creator'} has not enabled Bags yet.`;
-
   return (
-    <div className="popup-shell">
-      <header className="dashboard-header">
-        <div className="brand-mark">
-          <img src="/assets/icon48.png" alt="Royalty Trojan" width="32" height="32" />
-          <div>
-            <h1>Royalty Trojan</h1>
-            <p>Status-first creator subscriptions</p>
-          </div>
+    <div className="popup-container">
+      <div className="status-bar">
+        <span className={`wallet-dot ${wallet.connected ? 'connected' : 'disconnected'}`} />
+        <span className="wallet-address">{truncatePublicKey(wallet.publicKey)}</span>
+        {!wallet.connected && (
+          <button className="connect-inline" onClick={connectWallet}>Connect</button>
+        )}
+      </div>
+
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-value">{streamStats.active}</div>
+          <div className="stat-label">Active Streams</div>
         </div>
-        <div className="header-stats">
-          <span>{activeStreamCount} active</span>
-          <span>{supportingCreatorsCount} creators</span>
+        <div className="stat-card">
+          <div className="stat-value">${streamStats.totalSpentThisMonth.toFixed(2)}</div>
+          <div className="stat-label">This Month</div>
         </div>
-      </header>
+      </div>
 
-      <main className="dashboard-grid">
-        <section className="wallet-panel">
-          <div className="wallet-row">
-            <div>
-              <span className={`status-dot ${walletConnected ? 'connected' : 'disconnected'}`} />
-              <span className="wallet-label">Wallet: {walletConnected ? 'Connected' : 'Disconnected'}</span>
-              <span className="wallet-separator">|</span>
-              <span className="wallet-key">{truncateWallet(publicKey)}</span>
-            </div>
-            {walletConnected ? (
-              <button className="link-button" onClick={handleDisconnect}>
-                Disconnect
-              </button>
-            ) : (
-              <button className="primary-button" onClick={handleConnect}>
-                Connect
-              </button>
-            )}
-          </div>
-        </section>
+      {currentPageCreator && tiers.length > 0 && (
+        <div className="current-creator">
+          <span>You're on {currentPageCreator.name}'s page</span>
+          <button className="tip-inline" onClick={handleQuickTip}>⚡ Tip ${tiers[0].amount}</button>
+        </div>
+      )}
 
-        <section className="metrics-panel">
-          <div className="metric-row">
-            <span>💰 Active Streams: {activeStreamCount}</span>
-            <span>⏸️ Paused: {pausedStreamCount}</span>
-          </div>
-          <div className="metric-divider" />
-          <p className="supporting-copy">📊 Supporting {supportingCreatorsCount} creators this month</p>
-        </section>
+      <div className="quick-actions">
+        <button className="secondary-action" disabled title="Pause all coming soon">⏸️ Pause All</button>
+        <button className="secondary-action" onClick={() => setSettingsOpen((open) => !open)}>
+          ⚙️ Settings
+        </button>
+        <button className="secondary-action" onClick={() => runtime.openOptionsPage?.()}>
+          Open Options
+        </button>
+      </div>
 
-        <section className="actions-panel">
-          <h2>Quick Actions</h2>
-          <div className="action-stack">
-            <div className="action-hint current-page-status">{creatorStatusText}</div>
-            <button
-              className="primary-action"
-              onClick={handleQuickTip}
-              disabled={!walletConnected || !isSupportedPage || !pageStatus?.bagsEnabled || isQuickTipping}
-            >
-              {isQuickTipping ? 'Sending Tip...' : '⚡ Tip $5'}
-            </button>
-            <button
-              className="secondary-action"
-              onClick={handleOpenTipModal}
-              disabled={!isSupportedPage || !pageStatus?.creatorDetected}
-            >
-              Open Tier Picker
-            </button>
-            <button className="secondary-action" disabled title="Pause All Streams is not available yet">
-              ⏸️ Pause All Streams
-            </button>
-            {quickTipMessage && <div className="tip-feedback">{quickTipMessage}</div>}
-          </div>
-        </section>
-
-        <section className="trust-panel" aria-label="Permission explanation">
-          <h2>🔒 We request these permissions:</h2>
-          <ul className="trust-list">
-            <li>
-              <strong>storage:</strong> Save your custom tiers and wallet cache.
-            </li>
-            <li>
-              <strong>activeTab:</strong> Only access the page when you click the icon or use a quick action.
-            </li>
-            <li>
-              <strong>Host permissions (YouTube, X, Twitch):</strong> To inject the Bags badge and intercept
-              subscribe buttons.
-            </li>
-          </ul>
-          <a className="privacy-link" href="privacy-policy.html" target="_blank" rel="noopener noreferrer">
-            Read our privacy policy
-          </a>
-        </section>
-
-        <details className="settings-accordion">
-          <summary>⚙️ Settings</summary>
-          <div className="settings-panel">
-            <Settings />
-          </div>
-        </details>
-      </main>
+      {settingsOpen && (
+        <div className="settings-slide-down">
+          <Settings />
+        </div>
+      )}
     </div>
   );
 };
