@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { WalletStatus } from './components/WalletStatus.js';
-import { ActiveStreams } from './components/ActiveStreams.js';
 import { Settings } from './components/Settings.js';
-import { Welcome } from './components/Welcome.js';
 import './styles.css';
 
 interface WalletStatusResponse {
@@ -15,7 +12,23 @@ interface WalletStatusResponse {
   signature?: string;
 }
 
-const chromeRuntime = (globalThis as typeof globalThis & {
+interface StreamSummary {
+  creatorWallet?: string;
+  status?: string;
+}
+
+interface StreamListResponse {
+  success?: boolean;
+  streams?: StreamSummary[];
+  error?: string | { code?: string; message?: string; details?: unknown };
+}
+
+interface ChromeTab {
+  id?: number;
+  url?: string;
+}
+
+const chromeGlobal = globalThis as typeof globalThis & {
   chrome: {
     runtime: {
       sendMessage(
@@ -23,23 +36,68 @@ const chromeRuntime = (globalThis as typeof globalThis & {
         callback: (response: WalletStatusResponse) => void
       ): void;
     };
+    tabs: {
+      query(
+        queryInfo: { active: boolean; currentWindow: boolean },
+        callback: (tabs: ChromeTab[]) => void
+      ): void;
+      sendMessage(
+        tabId: number,
+        message: { type: string; payload?: unknown },
+        callback?: (response: { success?: boolean; error?: string }) => void
+      ): void;
+    };
   };
-}).chrome.runtime;
+};
 
-type Tab = 'welcome' | 'streams' | 'settings';
+const chromeRuntime = chromeGlobal.chrome.runtime;
+const chromeTabs = chromeGlobal.chrome.tabs;
+
+function isSupportedUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  return /https:\/\/([^.]+\.)?(youtube\.com|x\.com|twitch\.tv)\//.test(url);
+}
+
+function truncateWallet(publicKey: string | null): string {
+  if (!publicKey) return 'Not connected';
+  return publicKey.length > 12 ? `${publicKey.slice(0, 4)}...${publicKey.slice(-6)}` : publicKey;
+}
 
 const Popup: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<Tab>('welcome');
   const [walletConnected, setWalletConnected] = useState(false);
   const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [activeStreams, setActiveStreams] = useState<StreamSummary[]>([]);
+  const [activeTabId, setActiveTabId] = useState<number | null>(null);
+  const [isSupportedPage, setIsSupportedPage] = useState(false);
 
   useEffect(() => {
-    // Check wallet status on mount
+    chromeTabs.query({ active: true, currentWindow: true }, (tabs: ChromeTab[]) => {
+      const currentTab = tabs[0];
+      setActiveTabId(currentTab?.id ?? null);
+      setIsSupportedPage(isSupportedUrl(currentTab?.url));
+    });
+  }, []);
+
+  useEffect(() => {
     chromeRuntime.sendMessage({ type: 'GET_WALLET_STATUS' }, (response: WalletStatusResponse) => {
       setWalletConnected(response.connected);
       setPublicKey(response.publicKey);
     });
   }, []);
+
+  useEffect(() => {
+    if (!publicKey) {
+      setActiveStreams([]);
+      return;
+    }
+
+    chromeRuntime.sendMessage(
+      { type: 'GET_ALL_STREAMS', payload: { sender: publicKey } },
+      (response: StreamListResponse) => {
+        setActiveStreams(response.success ? response.streams ?? [] : []);
+      }
+    );
+  }, [publicKey]);
 
   const handleConnect = () => {
     chromeRuntime.sendMessage({ type: 'CONNECT_WALLET' }, (response: WalletStatusResponse) => {
@@ -59,45 +117,84 @@ const Popup: React.FC = () => {
     });
   };
 
+  const handleQuickTip = () => {
+    if (!activeTabId) return;
+
+    chromeTabs.sendMessage(activeTabId, { type: 'OPEN_CURRENT_CREATOR_TIP' }, () => {
+      void 0;
+    });
+  };
+
+  const activeStreamCount = activeStreams.length;
+  const pausedStreamCount = activeStreams.filter((stream) => stream.status === 'paused').length;
+  const supportingCreatorsCount = new Set(
+    activeStreams.map((stream) => stream.creatorWallet || 'unknown')
+  ).size;
+
   return (
-    <div className="popup-container">
-      <header className="header">
-        <img src="/assets/icon48.png" alt="Royalty Trojan" width="32" height="32" />
-        <h1>Royalty Trojan</h1>
+    <div className="popup-shell">
+      <header className="dashboard-header">
+        <div className="brand-mark">
+          <img src="/assets/icon48.png" alt="Royalty Trojan" width="32" height="32" />
+          <div>
+            <h1>Royalty Trojan</h1>
+            <p>Status-first creator subscriptions</p>
+          </div>
+        </div>
       </header>
 
-      <WalletStatus 
-        connected={walletConnected} 
-        publicKey={publicKey}
-        onConnect={handleConnect}
-        onDisconnect={handleDisconnect}
-      />
+      <main className="dashboard-grid">
+        <section className="wallet-panel">
+          <div className="wallet-row">
+            <div>
+              <span className={`status-dot ${walletConnected ? 'connected' : 'disconnected'}`} />
+              <span className="wallet-label">Wallet: {walletConnected ? 'Connected' : 'Disconnected'}</span>
+              <span className="wallet-separator">|</span>
+              <span className="wallet-key">{truncateWallet(publicKey)}</span>
+            </div>
+            {walletConnected ? (
+              <button className="link-button" onClick={handleDisconnect}>
+                Disconnect
+              </button>
+            ) : (
+              <button className="primary-button" onClick={handleConnect}>
+                Connect
+              </button>
+            )}
+          </div>
+        </section>
 
-      <nav className="tabs">
-        <button 
-          className={activeTab === 'welcome' ? 'active' : ''} 
-          onClick={() => setActiveTab('welcome')}
-        >
-          Welcome
-        </button>
-        <button 
-          className={activeTab === 'streams' ? 'active' : ''} 
-          onClick={() => setActiveTab('streams')}
-        >
-          Streams
-        </button>
-        <button 
-          className={activeTab === 'settings' ? 'active' : ''} 
-          onClick={() => setActiveTab('settings')}
-        >
-          Settings
-        </button>
-      </nav>
+        <section className="metrics-panel">
+          <div className="metric-row">
+            <span>💰 Active Streams: {activeStreamCount}</span>
+            <span>⏸️ Paused: {pausedStreamCount}</span>
+          </div>
+          <div className="metric-divider" />
+          <p className="supporting-copy">📊 Supporting {supportingCreatorsCount} creators this month</p>
+        </section>
 
-      <main className="content">
-        {activeTab === 'welcome' && <Welcome connected={walletConnected} />}
-        {activeTab === 'streams' && <ActiveStreams publicKey={publicKey} />}
-        {activeTab === 'settings' && <Settings />}
+        <section className="actions-panel">
+          <h2>Quick Actions</h2>
+          <div className="action-stack">
+            {isSupportedPage ? (
+              <button className="primary-action" onClick={handleQuickTip} disabled={!walletConnected}>
+                ⚡ Quick Tip Current Page Creator
+              </button>
+            ) : (
+              <div className="action-hint">Open YouTube, X, or Twitch to tip the current creator.</div>
+            )}
+            <button className="secondary-action" disabled title="Pause All Streams is not available yet">
+              ⏸️ Pause All Streams
+            </button>
+          </div>
+        </section>
+
+        <details className="settings-accordion">
+          <summary>⚙️ Settings</summary>
+          <div className="settings-panel">
+            <Settings />
+          </div>
+        </details>
       </main>
     </div>
   );

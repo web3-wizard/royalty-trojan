@@ -115,6 +115,39 @@ async function showModal(creatorName: string, recipientWallet: string) {
   );
 }
 
+async function openCurrentCreatorTip(): Promise<boolean> {
+  const creator = currentCreator;
+  if (!creator) {
+    showToast('Creator was not detected on this page.', 'error');
+    return false;
+  }
+
+  const creatorWithWallet = creator as CreatorWithWallet;
+  let wallet: string | undefined = creatorWithWallet.wallet;
+
+  try {
+    if (!wallet) {
+      const domain = await extractDomainFromCreator();
+      wallet = await resolveCreatorWallet(domain ?? undefined, creator.identifier);
+      if (wallet) {
+        creatorWithWallet.wallet = wallet;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to resolve wallet for quick tip:', error);
+    showToast('Could not contact wallet resolver. Try again in a moment.', 'error');
+    return false;
+  }
+
+  if (!wallet) {
+    showToast('Creator has not set up Bags payments yet.', 'info');
+    return false;
+  }
+
+  await showModal(creator.displayName || creator.identifier, wallet);
+  return true;
+}
+
 async function detectPlatform() {
   const url = location.href;
   const adapter = adapters.find((candidate) => candidate.match(url));
@@ -224,6 +257,17 @@ function startObserving() {
 }
 
 void detectPlatform();
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === 'OPEN_CURRENT_CREATOR_TIP') {
+    void openCurrentCreatorTip().then((success) => {
+      sendResponse({ success });
+    });
+    return true;
+  }
+
+  return false;
+});
 
 let lastUrl = location.href;
 new MutationObserver(() => {
