@@ -35,7 +35,7 @@ type MessageResponse = {
   error?: string;
 };
 
-type ChromeTab = { id?: number };
+type ChromeTab = { id?: number; url?: string };
 
 const DEFAULT_TIERS: Tier[] = [
   { name: 'Tip Jar', amount: 5 },
@@ -46,6 +46,7 @@ const DEFAULT_TIERS: Tier[] = [
 const chromeGlobal = globalThis as typeof globalThis & {
   chrome: {
     runtime: {
+      lastError?: { message?: string };
       sendMessage(
         message: { type: string; payload?: unknown },
         callback?: (response: MessageResponse) => void
@@ -72,6 +73,11 @@ const chromeGlobal = globalThis as typeof globalThis & {
 };
 
 const { runtime, tabs, storage } = chromeGlobal.chrome;
+
+function isSupportedUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  return /https:\/\/([^.]+\.)?(youtube\.com|x\.com|twitch\.tv)\//.test(url);
+}
 
 function truncatePublicKey(publicKey: string | null): string {
   if (!publicKey) return 'Not connected';
@@ -109,9 +115,20 @@ const Popup: React.FC = () => {
     });
 
     tabs.query({ active: true, currentWindow: true }, (activeTabs: ChromeTab[]) => {
-      const tabId = activeTabs[0]?.id;
+      const activeTab = activeTabs[0];
+      const tabId = activeTab?.id;
+      if (!isSupportedUrl(activeTab?.url)) {
+        setCurrentPageCreator(null);
+        return;
+      }
       if (!tabId) return;
+
       tabs.sendMessage(tabId, { type: 'GET_CREATOR_INFO' }, (response?: MessageResponse) => {
+        if (runtime.lastError) {
+          setCurrentPageCreator(null);
+          return;
+        }
+
         if (response?.creator) setCurrentPageCreator(response.creator);
       });
     });
