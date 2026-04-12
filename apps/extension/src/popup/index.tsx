@@ -84,10 +84,6 @@ function truncatePublicKey(publicKey: string | null): string {
   return `${publicKey.slice(0, 6)}...${publicKey.slice(-4)}`;
 }
 
-function hasRuntimeError(runtimeApi: typeof runtime): boolean {
-  return Boolean(runtimeApi.lastError);
-}
-
 const Popup: React.FC = () => {
   const [wallet, setWallet] = useState<WalletState>({ connected: false, publicKey: null });
   const [streamStats, setStreamStats] = useState<StreamStats>({ active: 0, paused: 0, totalSpentThisMonth: 0 });
@@ -104,7 +100,11 @@ const Popup: React.FC = () => {
     });
 
     runtime.sendMessage({ type: 'GET_WALLET_STATUS' }, (response: MessageResponse) => {
-      if (hasRuntimeError(runtime)) return;
+      const err = chromeGlobal.chrome.runtime.lastError;
+      if (err) {
+        void err.message;
+        return;
+      }
       setWallet({
         connected: Boolean(response.connected),
         publicKey: response.publicKey ?? null,
@@ -112,7 +112,11 @@ const Popup: React.FC = () => {
     });
 
     runtime.sendMessage({ type: 'GET_STREAM_STATS' }, (response: MessageResponse) => {
-      if (hasRuntimeError(runtime)) return;
+      const err = chromeGlobal.chrome.runtime.lastError;
+      if (err) {
+        void err.message;
+        return;
+      }
       setStreamStats({
         active: Number(response.active ?? 0),
         paused: Number(response.paused ?? 0),
@@ -130,7 +134,9 @@ const Popup: React.FC = () => {
       if (!tabId) return;
 
       tabs.sendMessage(tabId, { type: 'GET_CREATOR_INFO' }, (response?: MessageResponse) => {
-        if (runtime.lastError) {
+        const err = chromeGlobal.chrome.runtime.lastError;
+        if (err) {
+          void err.message;
           setCurrentPageCreator(null);
           return;
         }
@@ -144,7 +150,9 @@ const Popup: React.FC = () => {
     setActionError(null);
 
     runtime.sendMessage({ type: 'CONNECT_WALLET' }, (response: MessageResponse) => {
-      if (hasRuntimeError(runtime)) {
+      const err = chromeGlobal.chrome.runtime.lastError;
+      if (err) {
+        void err.message;
         setActionError('Unable to reach background service. Reload the extension and try again.');
         return;
       }
@@ -186,7 +194,9 @@ const Popup: React.FC = () => {
         amount: tiers[0].amount,
       },
     }, (response?: MessageResponse) => {
-      if (hasRuntimeError(runtime)) {
+      const err = chromeGlobal.chrome.runtime.lastError;
+      if (err) {
+        void err.message;
         setActionError('Could not send quick tip. Reload the extension and try again.');
         return;
       }
