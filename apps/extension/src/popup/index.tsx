@@ -1,10 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { WalletStatus } from './components/WalletStatus';
-import { ActiveStreams } from './components/ActiveStreams';
-import { Settings } from './components/Settings';
-import { Welcome } from './components/Welcome';
+import { WalletStatus } from './components/WalletStatus.js';
+import { ActiveStreams } from './components/ActiveStreams.js';
+import { Settings } from './components/Settings.js';
+import { Welcome } from './components/Welcome.js';
 import './styles.css';
+
+interface WalletStatusResponse {
+  connected: boolean;
+  publicKey: string | null;
+  ready?: boolean;
+  success?: boolean;
+  error?: string | { code?: string; message?: string; details?: unknown };
+  signature?: string;
+}
+
+const chromeRuntime = (globalThis as typeof globalThis & {
+  chrome: {
+    runtime: {
+      sendMessage(
+        message: { type: string; payload?: unknown },
+        callback: (response: WalletStatusResponse) => void
+      ): void;
+    };
+  };
+}).chrome.runtime;
 
 type Tab = 'welcome' | 'streams' | 'settings';
 
@@ -15,14 +35,14 @@ const Popup: React.FC = () => {
 
   useEffect(() => {
     // Check wallet status on mount
-    chrome.runtime.sendMessage({ type: 'GET_WALLET_STATUS' }, (response) => {
+    chromeRuntime.sendMessage({ type: 'GET_WALLET_STATUS' }, (response: WalletStatusResponse) => {
       setWalletConnected(response.connected);
       setPublicKey(response.publicKey);
     });
   }, []);
 
   const handleConnect = () => {
-    chrome.runtime.sendMessage({ type: 'CONNECT_WALLET' }, (response) => {
+    chromeRuntime.sendMessage({ type: 'CONNECT_WALLET' }, (response: WalletStatusResponse) => {
       if (response.success) {
         setWalletConnected(true);
         setPublicKey(response.publicKey);
@@ -31,7 +51,7 @@ const Popup: React.FC = () => {
   };
 
   const handleDisconnect = () => {
-    chrome.runtime.sendMessage({ type: 'DISCONNECT_WALLET' }, (response) => {
+    chromeRuntime.sendMessage({ type: 'DISCONNECT_WALLET' }, (response: WalletStatusResponse) => {
       if (response.success) {
         setWalletConnected(false);
         setPublicKey(null);

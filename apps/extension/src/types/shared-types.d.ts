@@ -14,3 +14,8 @@ declare module '@shared-types/creator' {
     findSubscribeButtons(): HTMLElement[];
   }
 }
+
+declare module '*.css' {
+  const css: string;
+  export default css;
+}
