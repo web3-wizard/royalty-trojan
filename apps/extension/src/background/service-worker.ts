@@ -49,6 +49,43 @@ declare const chrome: {
 
 let wallet: WalletAdapter = new PhantomWalletAdapter();
 const bagsClient = new BagsClient();
+const STREAM_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type StreamCacheEntry = {
+  expiresAt: number;
+  streams: any[];
+};
+
+const streamListCache = new Map<string, StreamCacheEntry>();
+
+function getStreamCacheKey(filter: { sender?: string; receiver?: string }): string {
+  return JSON.stringify({
+    sender: filter.sender ?? '',
+    receiver: filter.receiver ?? '',
+  });
+}
+
+function getCachedStreams(filter: { sender?: string; receiver?: string }): any[] | null {
+  const key = getStreamCacheKey(filter);
+  const entry = streamListCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    streamListCache.delete(key);
+    return null;
+  }
+  return entry.streams;
+}
+
+function setCachedStreams(filter: { sender?: string; receiver?: string }, streams: any[]): void {
+  streamListCache.set(getStreamCacheKey(filter), {
+    streams,
+    expiresAt: Date.now() + STREAM_CACHE_TTL_MS,
+  });
+}
+
+function clearStreamCache(): void {
+  streamListCache.clear();
+}
 
 async function updateBadge(): Promise<void> {
   try {
@@ -111,6 +148,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'CONNECT_WALLET': {
           try {
             await wallet.connect();
+            clearStreamCache();
             void updateBadge();
             sendResponse({ success: true, publicKey: wallet.publicKey });
           } catch (error) {
@@ -122,6 +160,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'DISCONNECT_WALLET': {
           try {
             await wallet.disconnect();
+            clearStreamCache();
             void updateBadge();
             sendResponse({ success: true });
           } catch (error) {
@@ -143,7 +182,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'GET_ALL_STREAMS': {
           try {
             const { sender, receiver } = message.payload ?? {};
-            const streams = await bagsClient.listStreams({ sender, receiver });
+            const filter = { sender, receiver };
+            const cached = getCachedStreams(filter);
+            if (cached) {
+              sendResponse({ success: true, streams: cached, cached: true });
+              break;
+            }
+
+            const streams = await bagsClient.listStreams(filter);
+            setCachedStreams(filter, streams);
             sendResponse({ success: true, streams });
           } catch (error) {
             sendError(sendResponse, 'GET_ALL_STREAMS_FAILED', error, 'Failed to fetch streams');
@@ -165,6 +212,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
 
             const signature = await bagsClient.createStream(wallet, recipient, amount);
+            clearStreamCache();
             void updateBadge();
             sendResponse({ success: true, signature, tier });
           } catch (error) {
@@ -186,6 +234,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
 
             const signature = await bagsClient.cancelStream(wallet, streamId);
+            clearStreamCache();
             void updateBadge();
             sendResponse({ success: true, signature });
           } catch (error) {

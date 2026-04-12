@@ -32,6 +32,57 @@ interface BadgeProps {
   platform: string;
 }
 
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+type RevenueCacheEntry = {
+  expiresAt: number;
+  value: number;
+};
+
+type StreamsCacheEntry = {
+  expiresAt: number;
+  streams: any[];
+};
+
+const revenueCache = new Map<string, RevenueCacheEntry>();
+const streamsCache = new Map<string, StreamsCacheEntry>();
+
+function getCachedRevenue(wallet: string): number | null {
+  const cached = revenueCache.get(wallet);
+  if (!cached) return null;
+  if (Date.now() > cached.expiresAt) {
+    revenueCache.delete(wallet);
+    return null;
+  }
+  return cached.value;
+}
+
+function setCachedRevenue(wallet: string, value: number): void {
+  revenueCache.set(wallet, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
+function getStreamsCacheKey(sender: string, receiver: string): string {
+  return `${sender}::${receiver}`;
+}
+
+function getCachedStreams(sender: string, receiver: string): any[] | null {
+  const key = getStreamsCacheKey(sender, receiver);
+  const cached = streamsCache.get(key);
+  if (!cached) return null;
+  if (Date.now() > cached.expiresAt) {
+    streamsCache.delete(key);
+    return null;
+  }
+  return cached.streams;
+}
+
+function setCachedStreams(sender: string, receiver: string, streams: any[]): void {
+  streamsCache.set(getStreamsCacheKey(sender, receiver), {
+    streams,
+    expiresAt: Date.now() + CACHE_TTL_MS,
+  });
+}
+
 export const Badge: React.FC<BadgeProps> = ({ creatorWallet, creatorName, platform }) => {
   const [revenue, setRevenue] = useState<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -43,9 +94,17 @@ export const Badge: React.FC<BadgeProps> = ({ creatorWallet, creatorName, platfo
   useEffect(() => {
     const fetchRevenue = async () => {
       try {
+        const cachedRevenue = getCachedRevenue(creatorWallet);
+        if (cachedRevenue !== null) {
+          setRevenue(cachedRevenue);
+          return;
+        }
+
         const response = await fetch(`http://localhost:3001/revenue?wallet=${creatorWallet}`);
         const data = await response.json();
-        setRevenue(data.totalRevenueUSD);
+        const nextRevenue = Number(data.totalRevenueUSD ?? 0);
+        setRevenue(nextRevenue);
+        setCachedRevenue(creatorWallet, nextRevenue);
       } catch (err) {
         console.error('Failed to fetch revenue:', err);
       }
@@ -65,10 +124,20 @@ export const Badge: React.FC<BadgeProps> = ({ creatorWallet, creatorName, platfo
           setLoading(false);
           return;
         }
+
+        const cachedStreams = getCachedStreams(status.publicKey, creatorWallet);
+        if (cachedStreams) {
+          setUserStreams(cachedStreams);
+          setLoading(false);
+          return;
+        }
+
         // Call Bags API to list streams from user to creator
         const response = await fetch(`http://localhost:3001/streams?sender=${status.publicKey}&receiver=${creatorWallet}`);
         const data = await response.json();
-        setUserStreams(data.streams || []);
+        const nextStreams = data.streams || [];
+        setUserStreams(nextStreams);
+        setCachedStreams(status.publicKey, creatorWallet, nextStreams);
         setLoading(false);
       });
     } catch (err) {
@@ -90,7 +159,13 @@ export const Badge: React.FC<BadgeProps> = ({ creatorWallet, creatorName, platfo
         { type: 'CANCEL_STREAM', payload: { streamId } },
         (response: WalletStatusResponse) => {
           if (response.success) {
-            setUserStreams(userStreams.filter(s => s.id !== streamId));
+            const nextStreams = userStreams.filter(s => s.id !== streamId);
+            setUserStreams(nextStreams);
+            chrome.runtime.sendMessage({ type: 'GET_WALLET_STATUS' }, (status: WalletStatusResponse) => {
+              if (status.connected && status.publicKey) {
+                setCachedStreams(status.publicKey, creatorWallet, nextStreams);
+              }
+            });
           } else {
             setError(getErrorMessage(response.error, 'Cancel failed'));
           }
