@@ -37,15 +37,6 @@ type MessageResponse = {
 
 type ChromeTab = { id?: number };
 
-declare global {
-  interface Window {
-    solana?: {
-      isPhantom?: boolean;
-      connect(): Promise<{ publicKey: { toString(): string } }>;
-    };
-  }
-}
-
 const DEFAULT_TIERS: Tier[] = [
   { name: 'Tip Jar', amount: 5 },
   { name: 'Supporter', amount: 10 },
